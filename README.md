@@ -16,6 +16,8 @@ The features it had to support:
 * C++17
 * Single Header (or header only)
 * Dependency-free
+* supports ```std::array, std::vector, std::unique_ptr, std::shared_ptr, std::optional, std::tuple, std::map, std::set, std::unordered_map, std::unordered_set ```
+* supports user defined types that follow standard container conventions
 
 ## Example
 
@@ -46,11 +48,11 @@ int main()
     ba << "AwAAAAQAAABSLEQQ";
 
     auto loadedRobot = ba.load<Robot>();
+    //the equality operators work as expected
     bool areEqual = (robot == loadedRobot) && !(robot !=loadedRobot) && !(robot < loadedRobot);
     assert(areEqual);
 }
-´´´
-
+```
 
 
 ## Licensed under the [MIT License](LICENSE)
