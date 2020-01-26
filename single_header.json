@@ -1,0 +1,6 @@
+{
+"project": "Tiny serialization for C++",
+"target": "single_header/tser.hpp",
+"sources": ["include/tser/tser.hpp"],
+"include_paths": ["include"]
+}
