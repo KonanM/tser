@@ -1,7 +1,7 @@
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 // SPDX-License-Identifier: MIT
 #pragma once
-#include "Serialize.hpp"
+#include "serialize.hpp"
 
 //here we can define comparision methods for smart pointer like types (shared_ptr, unique_ptr) to behave like std::optional comparisions
 //otherwise the address will be compared instead of the wrapped type

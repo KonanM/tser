@@ -6,10 +6,11 @@ option(TSER_OPT_BUILD_TESTS "Build and perform tser tests" ON)
 option(TSER_OPT_BUILD_SINGLE_HEADER "Build build the single header, when the tests are build" ON)
 
 set(HEADER 
-$<INSTALL_INTERFACE:include/tser/Base64Encoding.hpp> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/tser/Base64Encoding.hpp>
-$<INSTALL_INTERFACE:include/tser/Compare.hpp> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/tser/Compare.hpp>
-$<INSTALL_INTERFACE:include/tser/Print.hpp> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/tser/Print.hpp>
-$<INSTALL_INTERFACE:include/tser/Serialize.hpp> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/tser/Serialize.hpp>
+$<INSTALL_INTERFACE:include/tser/base64encoding.hpp> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/tser/base64encoding.hpp>
+$<INSTALL_INTERFACE:include/tser/compare.hpp> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/tser/compare.hpp>
+$<INSTALL_INTERFACE:include/tser/print.hpp> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/tser/print.hpp>
+$<INSTALL_INTERFACE:include/tser/serialize.hpp> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/tser/serialize.hpp>
+$<INSTALL_INTERFACE:include/tser/tser.hpp> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/tser/tser.hpp>
 )
 
 add_library(tser INTERFACE)
