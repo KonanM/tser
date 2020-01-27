@@ -21,19 +21,24 @@ std::ostream& operator <<(std::ostream& os, const T& container) {
     os << "[";
     size_t i = 0;
     for (auto& elem : container)
-        os << elem << (container.size() == ++i ? ", " : "]\n");
+        os << elem << ((++i) != container.size() ? ", " : "]\n");
     return os;
 }
-//enum print support for enums
+//print support for enums
 template<typename T, std::enable_if_t<std::is_enum_v<T> && !tser::is_detected_v<tser::has_outstream_op_t, T>, int> = 0>
 std::ostream& operator <<(std::ostream& os, const T& t) {
     return os << static_cast<std::underlying_type_t<T>>(t);
 }
-
-template<typename T, tser::enable_for_optional_t<T> = 0>
-std::ostream& operator <<(std::ostream& os, const T& opt) {
-    if (opt)
-        return os << '{' << *opt << '}';
-    else
-        return os << '{' << "nullopt" << '}';
+//support for optional like types
+template<typename T, std::enable_if_t<(tser::is_detected_v<tser::has_optional_t, T> && !tser::is_detected_v<tser::has_element_t, T>) && !tser::is_detected_v<tser::has_outstream_op_t, T>, int> = 0>
+std::ostream& operator <<(std::ostream& os, const T& t) {
+    if (t) return os << '{' << *t << '}';
+    else   return os << '{' << "null" << '}';
 }
+
+#define DEFINE_POINTER_PRINT(Type)\
+std::ostream& operator <<(std::ostream& os, const Type& ptr) {\
+    if (ptr) return os << '{' << *ptr << '}';\
+    else  return os << '{' << "null" << '}';\
+}
+

@@ -4,7 +4,8 @@
 
 I needed a tiny C++ serialization library for some competitive programming contest and didn't find anything that suited my needs. 
 The features it had to support:
-* serialization of nearly all of the STL containers (array,vector,string,(unordered_) map,set), types (optional, unique_ptr, shared_ptr, tuple), as well as custom containers and types
+* serialization of nearly all of the STL containers (array,vector,string,(unordered_) map,set), as well as custom containers that follow STL conventions
+* support STL types (optional, tuple), smart pointers (unique_ptr and shared_ptr) and raw pointers (treated like owning ptrs), as well as custom types that follow the STL conventions (e.g. boost optional)
 * support printing the serialized representation of an object to the console via base64 encoding (this way only printable characters are used, allows for easily loading objects into the debugger via strings)
 * automatically implement operator std::ostream '<<' (if not user provided) to be able to print a type and all of their members in a human readable format (close to json)
 * automatically implement operators  '<', '==', '!=' (if not user provided) - they were needed for some of the containers (e.g. 'map') as well as for prototyping

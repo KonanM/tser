@@ -43,13 +43,13 @@ namespace tser
     template<class T> constexpr bool is_trivial_v = std::is_trivially_copyable_v<T>;
 
     template<class T> using enable_for_container_t = std::enable_if_t<is_container_v<T> && !is_trivial_v<T>, int>;
-    template<class T> using enable_for_array_t       = std::enable_if_t<is_container_v<T> && !is_trivial_v<T>, int>;
+    template<class T> using enable_for_array_t     = std::enable_if_t<is_container_v<T>, int>;
     template<class T> using enable_for_map_t       = std::enable_if_t<std::is_same_v<typename T::value_type::second_type, typename T::mapped_type>, int>;
-    template<class T> using enable_for_members_t   = std::enable_if_t<is_detected_v<has_members_t, T> && !is_trivial_v<T>, int>;
+    template<class T> using enable_for_members_t   = std::enable_if_t<is_detected_v<has_members_t, T>, int>;
     template<class T> using enable_for_smart_ptr_t = std::enable_if_t<is_detected_v<has_element_t, T>, int>;
-    template<class T> using enable_for_optional_t  = std::enable_if_t<is_detected_v<has_optional_t, T> && !is_trivial_v<T>, int>;
+    template<class T> using enable_for_optional_t  = std::enable_if_t<is_detected_v<has_optional_t, T>, int>;
     template<class T> using enable_for_tuple_t     = std::enable_if_t<is_detected_v<has_tuple_t, T> && !is_trivial_v<T>, int>;
-    template<class T> using enable_for_memcpy_t    = std::enable_if_t<is_trivial_v<T>, int>;
+    template<class T> using enable_for_memcpy_t    = std::enable_if_t<is_trivial_v<T> && !std::is_pointer_v<T> && !is_detected_v<has_members_t, T> && !is_detected_v<has_optional_t, T>, int>;
 
     class BinaryArchive {
     public:
@@ -84,16 +84,23 @@ namespace tser
         //serialization for shared_ptr and uniuqe_ptr and the like
         template<typename T, enable_for_smart_ptr_t<T> = 0>
         void save(const T& ptr) {
-            save(static_cast<bool>(ptr));
-            if (ptr)
-                save(*ptr);
+            savePtrLike(ptr);
         }
         //serialization for optional like types
         template<typename T, enable_for_optional_t<T> = 0>
         void save(const T& opt) {
-            save(static_cast<bool>(opt));
-            if (opt)
-                save(*opt);
+            savePtrLike(opt);
+        }
+        template<typename T>
+        void save(const T* ptr) {
+            savePtrLike(ptr);
+        }
+        template<typename T>
+        void savePtrLike(T&& ptr)
+        {
+            save(static_cast<bool>(ptr));
+            if (ptr)
+                save(*ptr);
         }
         //everything that we can memcopy directly (e.g. array's that are trivially copyable)
         template<typename T, enable_for_memcpy_t<T> = 0>
@@ -108,6 +115,7 @@ namespace tser
         void save(const T& t) {
             std::apply([&](auto&& ... memberVal) { (save(memberVal), ...); }, t.members());
         }
+ 
         //stuff like std::vector and std::string, std::set
         template <template <typename...> class TContainer, typename T, enable_for_container_t<TContainer<T>> = 0>
         void load(TContainer<T>& container) {
@@ -123,7 +131,7 @@ namespace tser
             for (auto& val : container)
                 load(val);
         }
-        // tuple like things like pair or tuple
+        // tuple like things (pair or tuple)
         template<typename T, enable_for_tuple_t<T> = 0>
         void load(T& tuple) {
             std::apply([&](auto&& ... tupleVal) {(load(tupleVal), ...); }, tuple);
@@ -134,24 +142,25 @@ namespace tser
             mapT.clear();
             const unsigned short size = load<unsigned short>();
             for (int i = 0; i < size; ++i) {
-                mapT[load<TKey>()] = load<TVal>();
+                auto key = load<TKey>();
+                mapT[std::move(key)] = load<TVal>();
             }
         }
         //unique_ptr and shared ptr
         template<template <typename...> class TPtr, typename T, enable_for_smart_ptr_t<TPtr<T>> = 0>
         void load(TPtr<T>& ptr) {
-            if (const bool isValid = load<bool>()) {
-                ptr = TPtr<T>(new T());
-                load(*ptr);
-            }
-            else {
-                ptr = nullptr;
-            }
+            ptr = TPtr<T>(load<T*>());
         }
         //specialization for optional like types
         template<template <typename...> class TPtr, typename T, enable_for_optional_t<TPtr<T>> = 0>
         void load(TPtr<T>& t) {
             t = load<bool>() ? TPtr<T>(load<T>()) : TPtr<T>();
+        }
+        //raw pointers
+        template<typename T>
+        void load(T*& t) {
+            delete t;
+            t = load<T>();
         }
         //everything that is trivially copyable we just memcpy into the types
         template<typename T, enable_for_memcpy_t<T> = 0>
@@ -159,14 +168,25 @@ namespace tser
             std::memcpy(&t, m_bytes.data() + m_readOffset, sizeof(T));
             m_readOffset += sizeof(T);
         }
-        //convenience function to load certain types
+        //convenience function to load a specified type
         template<typename T>
         T load() {
-            T t;
-            load(t);
+            T t{};
+            if constexpr (std::is_pointer_v<T>)
+            {
+                if (load<bool>())
+                {
+                    t = new std::remove_pointer_t<T>{};
+                    load(*t);
+                }
+            }
+            else
+            {
+                load(t);
+            }
             return t;
         }
-        //we iterate through the members of all the types that implement the serizeable macro 
+        //we iterate through the members of all the types that implement the serializeable macro 
         template<typename T, enable_for_members_t<T> = 0>
         void load(T& t) {
             std::apply([&](auto&& ... memberVal) { (load(memberVal), ...); }, t.members());
@@ -208,4 +228,4 @@ namespace tser
 constexpr inline decltype(auto) members() const { return std::tie(__VA_ARGS__); }    \
 constexpr inline decltype(auto) members() { return std::tie(__VA_ARGS__); }    \
 static inline const std::vector<std::string_view> _memberNames = tser::split(#__VA_ARGS__, ",");\
-static inline const std::string_view _typeName = #Type;
+static constexpr std::string_view _typeName = #Type;

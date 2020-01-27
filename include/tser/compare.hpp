@@ -6,7 +6,7 @@
 //here we can define comparision methods for smart pointer like types (shared_ptr, unique_ptr) to behave like std::optional comparisions
 //otherwise the address will be compared instead of the wrapped type
 #define DEFINE_SMART_POINTER_COMPARISIONS(Type)\
-inline bool operator==(const Type& lhs, const Type& rhs){ if (lhs && rhs) {return *lhs == *rhs;}else if (!lhs && !rhs) {return true;} return false;}\
+inline bool operator==(const Type& lhs, const Type& rhs){ if (lhs && rhs) {return *lhs == *rhs;} else if (!lhs && !rhs) {return true;} return false;}\
 inline bool operator!=(const Type& lhs, const Type& rhs){ return !(lhs == rhs);}\
 inline bool operator< (const Type& lhs, const Type& rhs){ if (lhs && rhs){return *lhs < *rhs;} else if (rhs && !lhs){return true; }; return false;}
 

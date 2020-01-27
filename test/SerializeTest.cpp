@@ -1,9 +1,9 @@
 #include "gtest/gtest.h"
 
-#include "tser/Base64Encoding.hpp"
-#include "tser/Serialize.hpp"
-#include "tser/Compare.hpp"
-#include "tser/Print.hpp"
+#include "tser/base64encoding.hpp"
+#include "tser/serialize.hpp"
+#include "tser/compare.hpp"
+#include "tser/print.hpp"
 
 #include <unordered_map>
 #include <unordered_set>
@@ -12,56 +12,68 @@
 using namespace tser;
 
 
-TEST(bitstream, readBits)
+TEST(binaryArchive, readBits)
 {
-       BinaryArchive bitstream;
-       bitstream.save(true);
-       bitstream.save(false);
-       bitstream.save(true);
-       bitstream.reset();
-       ASSERT_TRUE(bitstream.load<bool>());
-       ASSERT_FALSE(bitstream.load<bool>());
-       ASSERT_TRUE(bitstream.load<bool>());
+       BinaryArchive binaryArchive;
+       binaryArchive.save(true);
+       binaryArchive.save(false);
+       binaryArchive.save(true);
+       binaryArchive.reset();
+       ASSERT_TRUE(binaryArchive.load<bool>());
+       ASSERT_FALSE(binaryArchive.load<bool>());
+       ASSERT_TRUE(binaryArchive.load<bool>());
 }
 
 
-TEST(bitstream, readInts)
+TEST(binaryArchive, readInts)
 {
-       BinaryArchive bitstream;
-       bitstream.save(15);
-       bitstream.save(1);
-       bitstream.save(-15);
-       bitstream.reset();
-       ASSERT_TRUE(bitstream.load<int>() == 15);
-       ASSERT_TRUE(bitstream.load<int>() == 1);
-       ASSERT_TRUE(bitstream.load<int>() == -15);
+       BinaryArchive binaryArchive;
+       binaryArchive.save(15);
+       binaryArchive.save(1);
+       binaryArchive.save(-15);
+       binaryArchive.reset();
+       ASSERT_TRUE(binaryArchive.load<int>() == 15);
+       ASSERT_TRUE(binaryArchive.load<int>() == 1);
+       ASSERT_TRUE(binaryArchive.load<int>() == -15);
 }
 
 enum class SomeEnum {A,B,C};
-TEST(bitstream, readPair)
+TEST(binaryArchive, readPair)
 {
-    BinaryArchive bitstream;
+    BinaryArchive binaryArchive;
     auto somePair = std::pair(SomeEnum::A, std::string("A"));
-    bitstream.save(somePair);
-    ASSERT_TRUE(bitstream.load<decltype(somePair)>() == somePair);
+    binaryArchive.save(somePair);
+    ASSERT_TRUE(binaryArchive.load<decltype(somePair)>() == somePair);
 }
 
-TEST(bitstream, readTuple)
+TEST(binaryArchive, readTuple)
 {
-    BinaryArchive bitstream;
+    BinaryArchive binaryArchive;
     auto someTuple = std::make_tuple(1, 2.0, std::string("Hello"));
-    bitstream.save(someTuple);
-    ASSERT_TRUE(bitstream.load<decltype(someTuple)>() == someTuple);
+    auto someTrivialTuple = std::make_tuple(1, 2.0);
+    binaryArchive.save(someTuple);
+    binaryArchive.save(someTrivialTuple);
+    ASSERT_TRUE(binaryArchive.load<decltype(someTuple)>() == someTuple);
+    ASSERT_EQ(binaryArchive.load<decltype(someTrivialTuple)>(), someTrivialTuple);
 }
 
-TEST(bitstream, readArray)
+TEST(binaryArchive, readArray)
 {
-    BinaryArchive bitstream;
-    auto someArray = std::array<std::string, 5>{"abc"};
-    bitstream.save(someArray);
-    ASSERT_TRUE(bitstream.load<decltype(someArray)>() == someArray);
+    BinaryArchive binaryArchive;
+    auto someArray = std::array<std::string, 3>{"abc", "def", "ghi"};
+    auto someRawArray = std::array<std::string*, 3>{new std::string("abc"), new std::string("def"), new std::string("ghi")};
+    binaryArchive.save(someArray);
+    binaryArchive.save(someRawArray);
+    ASSERT_TRUE(binaryArchive.load<decltype(someArray)>() == someArray);
 }
 
+TEST(binaryArchive, readRawPtr)
+{
+    BinaryArchive binaryArchive;
+    auto someArray = new std::string("Hello World!");
+    binaryArchive.save(someArray);
+    ASSERT_TRUE(*std::unique_ptr<std::string>(binaryArchive.load<decltype(someArray)>()) == "Hello World!");
+}
 
 struct Point
 {
@@ -69,13 +81,13 @@ struct Point
     short x = 0, y = 0;
 };
 
-TEST(bitstream, readPoints)
+TEST(binaryArchive, readCustomPoints)
 {
-    BinaryArchive bitstream;
-    bitstream.save(Point{1,2});
-    bitstream.save(Point{5,6});
-    ASSERT_TRUE((bitstream.load<Point>() == Point{ 1,2 }));
-    ASSERT_TRUE((bitstream.load<Point>() == Point{ 5,6 }));
+    BinaryArchive binaryArchive;
+    binaryArchive.save(Point{1,2});
+    binaryArchive.save(Point{5,6});
+    ASSERT_TRUE((binaryArchive.load<Point>() == Point{ 1,2 }));
+    ASSERT_TRUE((binaryArchive.load<Point>() == Point{ 5,6 }));
 }
 
 
@@ -84,34 +96,52 @@ DEFINE_SMART_POINTER_COMPARISIONS(std::unique_ptr<Point>)
 DEFINE_SMART_POINTER_COMPARISIONS(std::shared_ptr<Point>)
 DEFINE_HASHABLE(Point)
 
+struct SmartWrapper
+{
+    DEFINE_SERIALIZABLE(SmartWrapper, unique, shared, optional)
+    std::unique_ptr<Point> unique;
+    std::shared_ptr<Point> shared;
+    std::optional<Point> optional;
+};
+
+TEST(binaryArchive, smartPointerOfCustom)
+{
+    BinaryArchive binaryArchive;
+    SmartWrapper smartWrapper{ std::unique_ptr<Point>(new Point{1,2}), std::shared_ptr<Point>(new Point{1,2}),  std::optional<Point>(Point{1,2}) };
+    binaryArchive.save(smartWrapper);
+    SmartWrapper smartWrapper2 =  binaryArchive.load<SmartWrapper>();
+    ASSERT_EQ(smartWrapper, smartWrapper2);
+}
+
+
 struct ComplexType
 {
     ComplexType() = default;
     ComplexType(Point p1, Point p2) : x1(p1), x2(p2) {}
-    DEFINE_SERIALIZABLE(ComplexType, x1, x2, intArray, ints, mapping, sets, pUnique, pSUnique, opt)
+    DEFINE_SERIALIZABLE(ComplexType, x1, x2, intArray, ints, mapping, sets)
     Point x1, x2;
     std::array<Point, 4> intArray = { x1, x2, x1, x2 };
-    std::vector<char> ints = { '1','2','3' };
+    std::vector<char> ints = { '1','2','3'};
     std::unordered_map<char, char> mapping{ {'a', 'b'},  {'b', 'c'} };
     std::unordered_set<Point> sets{ Point{1,2}, Point{3,4} };
-    std::unique_ptr<Point> pUnique;
-    std::shared_ptr<Point> pSUnique;
+
     std::optional<std::unique_ptr<Point>> opt;
 };
 
-TEST(bitstream, readWrite)
+TEST(binaryArchive, complexType)
 {
-       BinaryArchive bitstream;
+       BinaryArchive binaryArchive;
        ComplexType c(Point{ 1,2 }, Point{ 3, 4 });
-       c.ints.push_back(4);
-       c.pUnique = std::unique_ptr<Point>(new Point{3,4});
-       c.pSUnique = std::unique_ptr<Point>(new Point{5,6});
+       c.ints.push_back('4');
        c.opt = std::make_optional(std::unique_ptr<Point>(new Point{ 7,8 }));
-       bitstream.save(c);
-       auto str = base64_encode(bitstream.getString());
+       binaryArchive.save(c);
+       auto str = base64_encode(binaryArchive.getString());
        BinaryArchive readStream;
        readStream << str;
+       std::cout << c;
        ComplexType c2;
+       c2.ints.clear();
+       c2.sets.clear();
        readStream.load(c2);
 
        ASSERT_EQ(c, c2);
