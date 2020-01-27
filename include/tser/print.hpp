@@ -12,7 +12,7 @@ std::ostream& operator <<(std::ostream& os, const std::pair<X, Y>& p) {
 template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> && !tser::is_detected_v<tser::has_outstream_op_t, T>, int> = 0>
 std::ostream& operator<<(std::ostream& os, const T& t) {
     int i = -1, last = static_cast<int>(T::_memberNames.size()) - 1;
-    os << T::_typeName << ":{ ";
+    os << T::_typeName << ":{";
     return std::apply([&](auto&& ... memberVal) -> decltype(auto) {return ((++i, os << T::_memberNames[static_cast<unsigned>(i)] << "=" << memberVal << (i == last ? "}" : ",")), ...); }, t.members());
 }
 //overload for all containers that don't implement std::ostream& <<

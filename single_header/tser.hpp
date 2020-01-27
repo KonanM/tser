@@ -45,6 +45,7 @@ namespace tser
     template<class T> using has_element_t = typename T::element_type;
     template<class T> constexpr bool is_container_v = is_detected_v<has_begin_t, T>;
     template<class T> constexpr bool is_trivial_v = std::is_trivially_copyable_v<T>;
+    template<class T> constexpr bool is_pointer_v = std::is_pointer_v<T> || tser::is_detected_v<has_element_t, T>;
 
     template<class T> using enable_for_container_t = std::enable_if_t<is_container_v<T> && !is_trivial_v<T>, int>;
     template<class T> using enable_for_array_t     = std::enable_if_t<is_container_v<T>, int>;
@@ -164,7 +165,7 @@ namespace tser
         template<typename T>
         void load(T*& t) {
             delete t;
-            t = load<T>();
+            t = load<T*>();
         }
         //everything that is trivially copyable we just memcpy into the types
         template<typename T, enable_for_memcpy_t<T> = 0>
@@ -241,13 +242,16 @@ static constexpr std::string_view _typeName = #Type;
 // #include "serialize.hpp"
 
 
-//here we can define comparision methods for smart pointer like types (shared_ptr, unique_ptr) to behave like std::optional comparisions
-//otherwise the address will be compared instead of the wrapped type
-#define DEFINE_SMART_POINTER_COMPARISIONS(Type)\
-inline bool operator==(const Type& lhs, const Type& rhs){ if (lhs && rhs) {return *lhs == *rhs;} else if (!lhs && !rhs) {return true;} return false;}\
-inline bool operator!=(const Type& lhs, const Type& rhs){ return !(lhs == rhs);}\
-inline bool operator< (const Type& lhs, const Type& rhs){ if (lhs && rhs){return *lhs < *rhs;} else if (rhs && !lhs){return true; }; return false;}
-
+namespace tser::detail {
+    template <class Tuple, std::size_t... I>
+    bool compareTuples(const Tuple& lh, const Tuple& rh, std::index_sequence<I...>)
+    {
+        auto compareEQ = [](const auto& lhs, const auto& rhs) { if constexpr (tser::is_pointer_v<std::remove_reference_t<decltype(lhs)>>) { if (lhs && rhs) { return *lhs == *rhs; } else if (!lhs && !rhs) { return true; } return false; } else return lhs == rhs; };
+        return (compareEQ(std::get<I>(lh), std::get<I>(rh)) &&  ...);
+    }
+}
+#define DEFINE_DEEP_POINTER_COMPARISION(Type)\
+friend bool operator==(const Type& lhs, const Type& rhs){ return tser::detail::compareTuples(lhs.members(), rhs.members(), std::make_index_sequence<std::tuple_size_v<decltype(lhs.members())>>{});}
 //if a complex type doesn't have a hash function and your too lazy to implement one, you could use this ugly hack
 #define DEFINE_HASHABLE(Type) \
 namespace std { \
@@ -264,7 +268,7 @@ namespace std { \
 template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> && !tser::is_detected_v<tser::has_equal_t  , T>, int> = 0>
 inline bool operator==(const T& lhs, const T& rhs) { return lhs.members() == rhs.members(); };
 template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> && !tser::is_detected_v<tser::has_nequal_t , T>, int> = 0>
-inline bool operator!=(const T& lhs, const T& rhs) { return lhs.members() != rhs.members(); };
+inline bool operator!=(const T& lhs, const T& rhs) { return !(lhs == rhs); };
 template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> && !tser::is_detected_v<tser::has_smaller_t, T>, int> = 0>
 inline bool operator< (const T& lhs, const T& rhs) { return lhs.members() < rhs.members(); };
 
@@ -298,7 +302,7 @@ std::ostream& operator <<(std::ostream& os, const std::pair<X, Y>& p) {
 template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> && !tser::is_detected_v<tser::has_outstream_op_t, T>, int> = 0>
 std::ostream& operator<<(std::ostream& os, const T& t) {
     int i = -1, last = static_cast<int>(T::_memberNames.size()) - 1;
-    os << T::_typeName << ":{ ";
+    os << T::_typeName << ":{";
     return std::apply([&](auto&& ... memberVal) -> decltype(auto) {return ((++i, os << T::_memberNames[static_cast<unsigned>(i)] << "=" << memberVal << (i == last ? "}" : ",")), ...); }, t.members());
 }
 //overload for all containers that don't implement std::ostream& <<

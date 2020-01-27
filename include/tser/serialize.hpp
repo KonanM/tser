@@ -41,6 +41,7 @@ namespace tser
     template<class T> using has_element_t = typename T::element_type;
     template<class T> constexpr bool is_container_v = is_detected_v<has_begin_t, T>;
     template<class T> constexpr bool is_trivial_v = std::is_trivially_copyable_v<T>;
+    template<class T> constexpr bool is_pointer_v = std::is_pointer_v<T> || tser::is_detected_v<has_element_t, T>;
 
     template<class T> using enable_for_container_t = std::enable_if_t<is_container_v<T> && !is_trivial_v<T>, int>;
     template<class T> using enable_for_array_t     = std::enable_if_t<is_container_v<T>, int>;
@@ -160,7 +161,7 @@ namespace tser
         template<typename T>
         void load(T*& t) {
             delete t;
-            t = load<T>();
+            t = load<T*>();
         }
         //everything that is trivially copyable we just memcpy into the types
         template<typename T, enable_for_memcpy_t<T> = 0>

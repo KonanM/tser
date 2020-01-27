@@ -61,10 +61,9 @@ TEST(binaryArchive, readArray)
 {
     BinaryArchive binaryArchive;
     auto someArray = std::array<std::string, 3>{"abc", "def", "ghi"};
-    auto someRawArray = std::array<std::string*, 3>{new std::string("abc"), new std::string("def"), new std::string("ghi")};
     binaryArchive.save(someArray);
-    binaryArchive.save(someRawArray);
-    ASSERT_TRUE(binaryArchive.load<decltype(someArray)>() == someArray);
+    auto loadedRawArray = binaryArchive.load<decltype(someArray)>();
+    ASSERT_EQ(loadedRawArray, someArray);
 }
 
 TEST(binaryArchive, readRawPtr)
@@ -92,25 +91,29 @@ TEST(binaryArchive, readCustomPoints)
 
 
 //if we don't want pointer types to break our comparision operator we have to define them here
-DEFINE_SMART_POINTER_COMPARISIONS(std::unique_ptr<Point>)
-DEFINE_SMART_POINTER_COMPARISIONS(std::shared_ptr<Point>)
 DEFINE_HASHABLE(Point)
 
-struct SmartWrapper
+struct PointerWrapper
 {
-    DEFINE_SERIALIZABLE(SmartWrapper, unique, shared, optional)
+    DEFINE_SERIALIZABLE(PointerWrapper, intPtr, unique, shared)
+    DEFINE_DEEP_POINTER_COMPARISION(PointerWrapper)
+
+    int* intPtr = nullptr;
     std::unique_ptr<Point> unique;
     std::shared_ptr<Point> shared;
-    std::optional<Point> optional;
 };
 
 TEST(binaryArchive, smartPointerOfCustom)
 {
     BinaryArchive binaryArchive;
-    SmartWrapper smartWrapper{ std::unique_ptr<Point>(new Point{1,2}), std::shared_ptr<Point>(new Point{1,2}),  std::optional<Point>(Point{1,2}) };
-    binaryArchive.save(smartWrapper);
-    SmartWrapper smartWrapper2 =  binaryArchive.load<SmartWrapper>();
-    ASSERT_EQ(smartWrapper, smartWrapper2);
+    PointerWrapper smartWrapper{new int(5), std::unique_ptr<Point>(new Point{1,2}), std::shared_ptr<Point>(new Point{1,2}) };
+    //the content of a raw pointer is serialized, not the address
+    binaryArchive.save(&smartWrapper);
+    //the serialized layout of shared_ptr<T>, unique_ptr<T>, optional<T> and T* are all the same
+    //so if I really wanted to I could load T* as optional
+    auto loadedSmartWrapper =  binaryArchive.load<std::optional<PointerWrapper>>();
+    //here we test if the deep pointer comparision macro works (as well as the serialization and deserialization of T*, unique_ptr<T>, shared_ptr<T> and optional<T>)
+    ASSERT_EQ(smartWrapper, *loadedSmartWrapper);
 }
 
 
@@ -118,14 +121,14 @@ struct ComplexType
 {
     ComplexType() = default;
     ComplexType(Point p1, Point p2) : x1(p1), x2(p2) {}
-    DEFINE_SERIALIZABLE(ComplexType, x1, x2, intArray, ints, mapping, sets)
+    DEFINE_SERIALIZABLE(ComplexType, x1, x2, intArray, ints, mapping, sets, opt)
     Point x1, x2;
     std::array<Point, 4> intArray = { x1, x2, x1, x2 };
     std::vector<char> ints = { '1','2','3'};
     std::unordered_map<char, char> mapping{ {'a', 'b'},  {'b', 'c'} };
     std::unordered_set<Point> sets{ Point{1,2}, Point{3,4} };
 
-    std::optional<std::unique_ptr<Point>> opt;
+    std::optional<Point> opt;
 };
 
 TEST(binaryArchive, complexType)
@@ -133,7 +136,7 @@ TEST(binaryArchive, complexType)
        BinaryArchive binaryArchive;
        ComplexType c(Point{ 1,2 }, Point{ 3, 4 });
        c.ints.push_back('4');
-       c.opt = std::make_optional(std::unique_ptr<Point>(new Point{ 7,8 }));
+       c.opt = std::make_optional(Point{ 7,8 });
        binaryArchive.save(c);
        auto str = base64_encode(binaryArchive.getString());
        BinaryArchive readStream;
