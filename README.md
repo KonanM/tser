@@ -2,6 +2,7 @@
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://img.shields.io/badge/build-passing-brightgreen.svg)
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/KonanM/tser/blob/master/LICENSE)
 [![Try online](https://img.shields.io/badge/try-online-blue.svg)](https://wandbox.org/permlink/gdgbD3t8i8hOWK6L)
+[![Try online](https://img.shields.io/badge/try-online-blue.svg)](https://godbolt.org/z/fmnm7r)
 [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/konanM/tser.svg)](http://isitmaintained.com/project/konanM/tser "Average time to resolve an issue")
 [![Percentage of issues still open](http://isitmaintained.com/badge/open/konanM/tser.svg)](http://isitmaintained.com/project/konanM/tser "Percentage of issues still open")
 ## Why another C++ serialization library?
@@ -15,13 +16,13 @@ I wanted a library that was small, but allowed me to avoid as much boilerplate a
 * implement pretty printing to the console **automatically**, but allow for user defined implementations
 * implement comparision operators (equal, non-equual, smaller) **automatically**, but allow for user defined implementations
 * support printing the serialized representation of an object to the console via base64 encoding (this way only printable characters are used, allows for easily loading objects into the debugger via strings)
-* use minimal set of includes (```vector, array, string, string_view, type_traits, iostream```) and only ~ 350 lines of code
+* use minimal set of includes (```array, string, string_view, tuple, type_traits, iostream```) and only ~ 350 lines of code
 
 ## Features
 
-* C++17
-* Header only (with single header version provided in folder single_header)
-* Cross platform (supports gcc, clang, msvc)
+* C++17 header only and single header (less than 400 LOC)
+* Header only version is split so that an even more minimal subset of the libary can be used
+* Cross platform (supports gcc, clang, msvc) and warning free (W4, Wall, Wextra)
 * Dependency-free
 * Supports ```std::array, std::vector, std::string, std::unique_ptr, std::shared_ptr, std::optional, std::tuple, std::map, std::set, std::unordered_map, std::unordered_set ```
 * Supports serialization of user defined types that follow standard container/type conventions
@@ -29,12 +30,6 @@ I wanted a library that was small, but allowed me to avoid as much boilerplate a
 * Supports printing of the serailized representation
 * deep pointer comparisions via macro
 * hashing of any serializable type via macro (recommended for prototyping only!)
-
-## Limitations
-* Only supports default constructible types, which members have to be either move or copy assignable
-* Uses a (simple) macro to be able to reflect over members of a given type
-* No support for ```std::variant``` (unless trivially copyable)
-* Currently it's not possible to add parsing of custom types that don't follow STL convections via free operators
 
 ## Example
 
@@ -104,5 +99,35 @@ int main()
     bool areEqual = smartWrapper == *loadedSmartWrapper
 }
 ```
+
+## How does it work?
+
+Internally the mechanism by the macro is actually rather simply. It would also be possible to implement this manually for every type.
+
+```cpp
+struct Point {
+    int x = 0, y = 0;
+    //DEFINE_SERIALIZABLE(Point, x, y) expands to:
+    constexpr inline decltype(auto) members() const { return std::tie(x, y); }
+    constexpr inline decltype(auto) members() { return std::tie(x, y); }
+    static constexpr std::string_view _typeName{"Point"};
+    static constexpr std::array<std::string_view, 2> _memberNames{"x", "y"};
+};
+```
+By provoding a function ```members()``` to iterate over the types we can now use SFINAE along with the detection idiom to detect how a type should be serialized.
+The printing of types is realized with the static ```_memberNames``` field.
+## Limitations
+* Only supports default constructible types, which members have to be either move or copy assignable
+* Uses a macro to be able to reflect over members of a given type
+* No support for ```std::variant``` (unless trivially copyable)
+* Currently it's not possible to add parsing of custom types that don't follow STL convections via free operators
+* Needs a recent compiler
+
+## Compiler support
+See also https://godbolt.org/z/fmnm7r
+* MSVC > 19.22
+* Clang > 9.0
+* Gcc > 7.3
+
 ## Licensed under the [MIT License](LICENSE)
 #
