@@ -5,11 +5,12 @@
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 // SPDX-License-Identifier: MIT
 
-#include <vector>
 #include <array>
+#include <cstring>
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <tuple>
 
 namespace tser
 {
@@ -126,9 +127,8 @@ namespace tser
         void load(TContainer<T>& container) {
             const unsigned short size = load<unsigned short>();
             container.clear();
-            for (int i = 0; i < size; ++i) {
+            for (int i = 0; i < size; ++i)
                 container.insert(container.end(), load<T>());
-            }
         }
         //containers like std::array or other multi dim fixed size
         template<template<typename, size_t> class TArray, typename T, size_t N, enable_for_array_t<TArray<T, N>> = 0>
@@ -177,16 +177,13 @@ namespace tser
         template<typename T>
         T load() {
             T t{};
-            if constexpr (std::is_pointer_v<T>)
-            {
-                if (load<bool>())
-                {
+            if constexpr (std::is_pointer_v<T>){
+                if (load<bool>()){
                     t = new std::remove_pointer_t<T>{};
                     load(*t);
                 }
             }
-            else
-            {
+            else {
                 load(t);
             }
             return t;
@@ -216,24 +213,21 @@ namespace tser
         //current bit offset
         size_t m_bufferSize = 0, m_readOffset = 0;
     };
-    //why exactly is there no split function in the STL?
-    std::vector<std::string_view> split(std::string_view str, std::string_view delims) {
-        std::vector<std::string_view> output;
-        for (auto first = str.data(), second = str.data(), last = first + str.size(); second != last && first != last; first = second + 1) {
-            second = std::find_first_of(first, last, std::cbegin(delims), std::cend(delims));
-            if (first != second)
-                output.emplace_back(first, second - first);
-        }
-        return output;
+    constexpr size_t nArgs(std::string_view str) {
+        size_t nargs = 1; for (auto c : str) if (c == ',') ++nargs; return nargs;
     }
 }
 
 //this macro defines printing, serialisation and comparision operators (==,!=,<) for custom types
-#define DEFINE_SERIALIZABLE(Type, ...)                              \
-constexpr inline decltype(auto) members() const { return std::tie(__VA_ARGS__); }    \
-constexpr inline decltype(auto) members() { return std::tie(__VA_ARGS__); }    \
-static inline const std::vector<std::string_view> _memberNames = tser::split(#__VA_ARGS__, ",");\
-static constexpr std::string_view _typeName = #Type;
+#define DEFINE_SERIALIZABLE(Type, ...) \
+constexpr inline decltype(auto) members() const { return std::tie(__VA_ARGS__); } \
+constexpr inline decltype(auto) members() { return std::tie(__VA_ARGS__); }  \
+static constexpr std::string_view _typeName = #Type;\
+static constexpr std::array<std::string_view, tser::nArgs(#__VA_ARGS__)> _memberNames = [](){ std::array<std::string_view, tser::nArgs(#__VA_ARGS__)> out{}; \
+size_t off = 0, next = 0; std::string_view ini(#__VA_ARGS__); \
+for(auto& strV : out){ next = ini.find_first_of(',', off); strV = ini.substr(off, next - off); off = next + 1;} return out;}();
+
+
 
 // #include "compare.hpp"
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -244,9 +238,9 @@ static constexpr std::string_view _typeName = #Type;
 
 namespace tser::detail {
     template <class Tuple, std::size_t... I>
-    bool compareTuples(const Tuple& lh, const Tuple& rh, std::index_sequence<I...>)
-    {
-        auto compareEQ = [](const auto& lhs, const auto& rhs) { if constexpr (tser::is_pointer_v<std::remove_reference_t<decltype(lhs)>>) { if (lhs && rhs) { return *lhs == *rhs; } else if (!lhs && !rhs) { return true; } return false; } else return lhs == rhs; };
+    bool compareTuples(const Tuple& lh, const Tuple& rh, std::index_sequence<I...>) {
+        auto compareEQ = [](const auto& lhs, const auto& rhs) { if constexpr (!tser::is_pointer_v<std::remove_reference_t<decltype(lhs)>>) {return lhs == rhs;}
+        else { if (lhs && rhs) { return *lhs == *rhs; } else if (!lhs && !rhs) { return true; } return false; } };
         return (compareEQ(std::get<I>(lh), std::get<I>(rh)) &&  ...);
     }
 }
@@ -375,15 +369,13 @@ namespace tser
         return out;
     }
     //here we define the operators to print to the console and converts that result back into the binary archive
-    std::ostream& operator<<(std::ostream& os, const tser::BinaryArchive& ba)
-    {
+    std::ostream& operator<<(std::ostream& os, const tser::BinaryArchive& ba){
         //we have to encode to a printable character set only, that's why we use base64
         os << base64_encode(ba.getString()) << '\n';
         return os;
     }
     
-    tser::BinaryArchive& operator<<(tser::BinaryArchive& ba, std::string encoded)
-    {
+    tser::BinaryArchive& operator<<(tser::BinaryArchive& ba, std::string encoded){
         ba.initialize(base64_decode(encoded));
         return ba;
     }

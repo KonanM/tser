@@ -38,15 +38,13 @@ namespace tser
         return out;
     }
     //here we define the operators to print to the console and converts that result back into the binary archive
-    std::ostream& operator<<(std::ostream& os, const tser::BinaryArchive& ba)
-    {
+    std::ostream& operator<<(std::ostream& os, const tser::BinaryArchive& ba){
         //we have to encode to a printable character set only, that's why we use base64
         os << base64_encode(ba.getString()) << '\n';
         return os;
     }
     
-    tser::BinaryArchive& operator<<(tser::BinaryArchive& ba, std::string encoded)
-    {
+    tser::BinaryArchive& operator<<(tser::BinaryArchive& ba, std::string encoded){
         ba.initialize(base64_decode(encoded));
         return ba;
     }

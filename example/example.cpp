@@ -27,13 +27,14 @@ int main()
     ba.save(robot);
     std::cout << ba; //prints AwAAAAQAAAABUg== to the console via base64 encoding (base64 means only printable characters are used)
     //this way it's quickly possible to log entire objects to the console or logfiles
-
+    tser::BinaryArchive ba2;
     //if we pass the BinaryArchive a string via operator << it will decode it and initialized it's internal buffer with it
-    ba << "AwAAAAQAAAABUg==";
+    ba2 << "AwAAAAQAAAABUg==";
     //so it's basically three lines of code to load an object into a test and start using it
-    auto loadedRobot = ba.load<Robot>();
+    auto loadedRobot = ba2.load<Robot>();
     //all the comparision operator are implemented, so I could directly use std::set<Robot>
     bool areEqual = (robot == loadedRobot) && !(robot !=loadedRobot) && !(robot < loadedRobot);
     (void)areEqual;
+    std::cout << loadedRobot; // prints Robot:{point=Point:{x=3, y=4}, item={R}}
 }
 
