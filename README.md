@@ -7,7 +7,7 @@
 [![Percentage of issues still open](http://isitmaintained.com/badge/open/konanM/tser.svg)](http://isitmaintained.com/project/konanM/tser "Percentage of issues still open")
 ## Why another C++ serialization library?
 
-I needed a tiny C++ serialization library for some competitive programming contest and didn't find anything that suited my needs. 
+I searched for a small C++ serialization library for some competitive programming contest and didn't find anything that suited my needs. 
 
 I wanted a library that was small, but allowed me to avoid as much boilerplate as possible. Especially if you are quickly prototyping you want to avoid implementing serialization and comparision manually.
 
@@ -73,13 +73,12 @@ int main()
 }
 ```
 
-Here I want to demonstrate how raw pointers behave and the ```DEFINE_DEEP_POINTER_COMPARISION``` macro works
+Here I want to demonstrate how raw pointers behave
 
 ```Cpp
 struct PointerWrapper
 {
     DEFINE_SERIALIZABLE(PointerWrapper, intPtr, unique, shared)
-    DEFINE_DEEP_POINTER_COMPARISION(PointerWrapper)
 
     int* intPtr = nullptr;
     std::unique_ptr<Point> unique;
@@ -96,7 +95,6 @@ int main()
     //so if I really wanted to I could load T* as optional
     auto loadedSmartWrapper =  binaryArchive.load<std::optional<PointerWrapper>>();
     //here we test if the deep pointer comparision macro works (as well as the serialization and deserialization of T*, unique_ptr<T>, shared_ptr<T> and optional<T>)
-    bool areEqual = smartWrapper == *loadedSmartWrapper
 }
 ```
 
@@ -117,11 +115,10 @@ struct Point {
 By provoding a function ```members()``` to iterate over the types we can now use SFINAE along with the detection idiom to detect how a type should be serialized.
 The printing of types is realized with the static ```_memberNames``` field.
 ## Limitations
-* Only supports default constructible types, which members have to be either move or copy assignable
+* Only supports default constructible types
 * Uses a macro to be able to reflect over members of a given type
 * No support for ```std::variant``` (unless trivially copyable)
-* Currently it's not possible to add parsing of custom types that don't follow STL convections via free operators
-* Needs a recent compiler
+* Needs a recent compiler (constexpr std::string_view)
 
 ## Compiler support
 See also https://godbolt.org/z/fmnm7r

@@ -1,5 +1,3 @@
-// Licensed under the MIT License <http://opensource.org/licenses/MIT>.
-// SPDX-License-Identifier: MIT
 #pragma once
 #include "serialize.hpp"
 #include <iostream>
@@ -9,6 +7,7 @@ template<typename X, typename Y>
 std::ostream& operator <<(std::ostream& os, const std::pair<X, Y>& p) {
     return os << '{' << p.first << ',' << p.second << '}';
 }
+//overload for classes that implement the tser macro
 template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> && !tser::is_detected_v<tser::has_outstream_op_t, T>, int> = 0>
 std::ostream& operator<<(std::ostream& os, const T& t) {
     int i = -1, last = static_cast<int>(T::_memberNames.size()) - 1;
@@ -34,11 +33,5 @@ template<typename T, std::enable_if_t<(tser::is_detected_v<tser::has_optional_t,
 std::ostream& operator <<(std::ostream& os, const T& t) {
     if (t) return os << '{' << *t << '}';
     else   return os << '{' << "null" << '}';
-}
-
-#define DEFINE_POINTER_PRINT(Type)\
-std::ostream& operator <<(std::ostream& os, const Type& ptr) {\
-    if (ptr) return os << '{' << *ptr << '}';\
-    else  return os << '{' << "null" << '}';\
 }
 

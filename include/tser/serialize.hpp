@@ -44,22 +44,25 @@ namespace tser
     template<class T> constexpr bool is_trivial_v = std::is_trivially_copyable_v<T>;
     template<class T> constexpr bool is_pointer_v = std::is_pointer_v<T> || tser::is_detected_v<has_element_t, T>;
 
-    template<class T> using enable_for_container_t = std::enable_if_t<is_container_v<T> && !is_trivial_v<T>, int>;
-    template<class T> using enable_for_array_t     = std::enable_if_t<is_container_v<T>, int>;
-    template<class T> using enable_for_map_t       = std::enable_if_t<std::is_same_v<typename T::value_type::second_type, typename T::mapped_type>, int>;
-    template<class T> using enable_for_members_t   = std::enable_if_t<is_detected_v<has_members_t, T>, int>;
-    template<class T> using enable_for_smart_ptr_t = std::enable_if_t<is_detected_v<has_element_t, T>, int>;
-    template<class T> using enable_for_optional_t  = std::enable_if_t<is_detected_v<has_optional_t, T>, int>;
-    template<class T> using enable_for_tuple_t     = std::enable_if_t<is_detected_v<has_tuple_t, T> && !is_trivial_v<T>, int>;
-    template<class T> using enable_for_memcpy_t    = std::enable_if_t<is_trivial_v<T> && !std::is_pointer_v<T> && !is_detected_v<has_members_t, T> && !is_detected_v<has_optional_t, T>, int>;
 
     class BinaryArchive {
     public:
+        template<class T> using has_custom_save_t = decltype(std::declval<T>().save(std::declval<BinaryArchive&>()));
+        template<class T> using enable_for_container_t = std::enable_if_t<is_container_v<T> && !is_trivial_v<T>, int>;
+        template<class T> using enable_for_array_t = std::enable_if_t<is_container_v<T>, int>;
+        template<class T> using enable_for_map_t = std::enable_if_t<std::is_same_v<typename T::value_type::second_type, typename T::mapped_type>, int>;
+        template<class T> using enable_for_members_t = std::enable_if_t<is_detected_v<has_members_t, T> && !is_detected_v<has_custom_save_t, T>, int>;
+        template<class T> using enable_for_smart_ptr_t = std::enable_if_t<is_detected_v<has_element_t, T>, int>;
+        template<class T> using enable_for_optional_t = std::enable_if_t<is_detected_v<has_optional_t, T>, int>;
+        template<class T> using enable_for_tuple_t = std::enable_if_t<is_detected_v<has_tuple_t, T> && !is_trivial_v<T>, int>;
+        template<class T> using enable_for_custom_t = std::enable_if_t<is_detected_v<has_custom_save_t, T>, int>;
+        template<class T> using enable_for_memcpy_t = std::enable_if_t<is_trivial_v<T> && !std::is_pointer_v<T> && !is_detected_v<has_members_t, T> && !is_detected_v<has_optional_t, T> && !is_detected_v<has_custom_save_t, T>, int>;
+
         explicit BinaryArchive(const size_t initialSize = 1024) : m_bytes(initialSize, '\0') {}
         //serialization for vector like and set like containers
         template <template <typename...> class TContainer, typename T, enable_for_container_t<TContainer<T>> = 0>
         void save(const TContainer<T>& container) {
-            save(static_cast<unsigned short>(container.size()));
+            save(static_cast<unsigned short>(std::size(container)));
             for (auto& val : container)
                 save(val);
         }
@@ -104,6 +107,16 @@ namespace tser
             if (ptr)
                 save(*ptr);
         }
+        //iterate over the members of our user defined types 
+        template<typename T, enable_for_members_t<T> = 0>
+        void save(const T& t) {
+            std::apply([&](auto&& ... memberVal) { (save(memberVal), ...); }, t.members());
+        }
+        //here we invoke a custom save method for a type that provides this function
+        template<typename T, enable_for_custom_t<T> = 0>
+        void save(const T& t) {
+            t.save(*this);
+        }
         //everything that we can memcopy directly (e.g. array's that are trivially copyable)
         template<typename T, enable_for_memcpy_t<T> = 0>
         void save(const T& t, const unsigned bytes = sizeof(T)) {
@@ -112,12 +125,11 @@ namespace tser
             std::memcpy(m_bytes.data() + m_bufferSize, std::addressof(t), bytes);
             m_bufferSize += bytes;
         }
-        //iterate over the members of our user defined types 
-        template<typename T, enable_for_members_t<T> = 0>
-        void save(const T& t) {
-            std::apply([&](auto&& ... memberVal) { (save(memberVal), ...); }, t.members());
+        //small helper so that we can use operator << to save any type
+        template<typename T>
+        friend BinaryArchive& operator<<(BinaryArchive& ba, T&& t) {
+            ba.save(std::forward<T>(t)); return ba;
         }
- 
         //stuff like std::vector and std::string, std::set
         template <template <typename...> class TContainer, typename T, enable_for_container_t<TContainer<T>> = 0>
         void load(TContainer<T>& container) {
@@ -163,6 +175,16 @@ namespace tser
             delete t;
             t = load<T*>();
         }
+        //we iterate through the members of all the types that implement the serializeable macro 
+        template<typename T, enable_for_members_t<T> = 0>
+        void load(T& t) {
+            std::apply([&](auto&& ... memberVal) { (load(memberVal), ...); }, t.members());
+        }
+        //here we invoke a custom load method for a type that provides this function
+        template<typename T, enable_for_custom_t<T> = 0>
+        void load(T& t) {
+            t.load(*this);
+        }
         //everything that is trivially copyable we just memcpy into the types
         template<typename T, enable_for_memcpy_t<T> = 0>
         void load(T& t) {
@@ -184,11 +206,7 @@ namespace tser
             }
             return t;
         }
-        //we iterate through the members of all the types that implement the serializeable macro 
-        template<typename T, enable_for_members_t<T> = 0>
-        void load(T& t) {
-            std::apply([&](auto&& ... memberVal) { (load(memberVal), ...); }, t.members());
-        }
+
         void reset() {
             m_bufferSize = 0;
             m_readOffset = 0;
@@ -203,12 +221,12 @@ namespace tser
         std::string_view getString() const {
             return std::string_view(m_bytes.data(), m_bufferSize);
         }
-
     private:
         std::string m_bytes = std::string(1024, '\0');
         //current bit offset
         size_t m_bufferSize = 0, m_readOffset = 0;
     };
+
     constexpr size_t nArgs(std::string_view str) {
         size_t nargs = 1; for (auto c : str) if (c == ',') ++nargs; return nargs;
     }

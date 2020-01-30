@@ -235,7 +235,7 @@ class TranslationUnit(object):
         for include in includes:
             include_match, found_included_path = include
             tmp_content += self.content[prev_end:include_match.start()]
-            tmp_content += "// {0}\n".format(include_match.group(0))
+            tmp_content += "// {0}".format(include_match.group(0))
             if found_included_path not in self.amalgamation.included_files:
                 t = TranslationUnit(found_included_path, self.amalgamation, False)
                 tmp_content += t.content

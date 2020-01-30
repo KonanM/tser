@@ -1,8 +1,7 @@
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 // SPDX-License-Identifier: MIT
 #pragma once
-// #include "serialize.hpp"
-// Licensed under the MIT License <http://opensource.org/licenses/MIT>.
+// #include "serialize.hpp"// Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 // SPDX-License-Identifier: MIT
 
 #include <array>
@@ -48,22 +47,25 @@ namespace tser
     template<class T> constexpr bool is_trivial_v = std::is_trivially_copyable_v<T>;
     template<class T> constexpr bool is_pointer_v = std::is_pointer_v<T> || tser::is_detected_v<has_element_t, T>;
 
-    template<class T> using enable_for_container_t = std::enable_if_t<is_container_v<T> && !is_trivial_v<T>, int>;
-    template<class T> using enable_for_array_t     = std::enable_if_t<is_container_v<T>, int>;
-    template<class T> using enable_for_map_t       = std::enable_if_t<std::is_same_v<typename T::value_type::second_type, typename T::mapped_type>, int>;
-    template<class T> using enable_for_members_t   = std::enable_if_t<is_detected_v<has_members_t, T>, int>;
-    template<class T> using enable_for_smart_ptr_t = std::enable_if_t<is_detected_v<has_element_t, T>, int>;
-    template<class T> using enable_for_optional_t  = std::enable_if_t<is_detected_v<has_optional_t, T>, int>;
-    template<class T> using enable_for_tuple_t     = std::enable_if_t<is_detected_v<has_tuple_t, T> && !is_trivial_v<T>, int>;
-    template<class T> using enable_for_memcpy_t    = std::enable_if_t<is_trivial_v<T> && !std::is_pointer_v<T> && !is_detected_v<has_members_t, T> && !is_detected_v<has_optional_t, T>, int>;
 
     class BinaryArchive {
     public:
+        template<class T> using has_custom_save_t = decltype(std::declval<T>().save(std::declval<BinaryArchive&>()));
+        template<class T> using enable_for_container_t = std::enable_if_t<is_container_v<T> && !is_trivial_v<T>, int>;
+        template<class T> using enable_for_array_t = std::enable_if_t<is_container_v<T>, int>;
+        template<class T> using enable_for_map_t = std::enable_if_t<std::is_same_v<typename T::value_type::second_type, typename T::mapped_type>, int>;
+        template<class T> using enable_for_members_t = std::enable_if_t<is_detected_v<has_members_t, T> && !is_detected_v<has_custom_save_t, T>, int>;
+        template<class T> using enable_for_smart_ptr_t = std::enable_if_t<is_detected_v<has_element_t, T>, int>;
+        template<class T> using enable_for_optional_t = std::enable_if_t<is_detected_v<has_optional_t, T>, int>;
+        template<class T> using enable_for_tuple_t = std::enable_if_t<is_detected_v<has_tuple_t, T> && !is_trivial_v<T>, int>;
+        template<class T> using enable_for_custom_t = std::enable_if_t<is_detected_v<has_custom_save_t, T>, int>;
+        template<class T> using enable_for_memcpy_t = std::enable_if_t<is_trivial_v<T> && !std::is_pointer_v<T> && !is_detected_v<has_members_t, T> && !is_detected_v<has_optional_t, T> && !is_detected_v<has_custom_save_t, T>, int>;
+
         explicit BinaryArchive(const size_t initialSize = 1024) : m_bytes(initialSize, '\0') {}
         //serialization for vector like and set like containers
         template <template <typename...> class TContainer, typename T, enable_for_container_t<TContainer<T>> = 0>
         void save(const TContainer<T>& container) {
-            save(static_cast<unsigned short>(container.size()));
+            save(static_cast<unsigned short>(std::size(container)));
             for (auto& val : container)
                 save(val);
         }
@@ -108,6 +110,16 @@ namespace tser
             if (ptr)
                 save(*ptr);
         }
+        //iterate over the members of our user defined types 
+        template<typename T, enable_for_members_t<T> = 0>
+        void save(const T& t) {
+            std::apply([&](auto&& ... memberVal) { (save(memberVal), ...); }, t.members());
+        }
+        //here we invoke a custom save method for a type that provides this function
+        template<typename T, enable_for_custom_t<T> = 0>
+        void save(const T& t) {
+            t.save(*this);
+        }
         //everything that we can memcopy directly (e.g. array's that are trivially copyable)
         template<typename T, enable_for_memcpy_t<T> = 0>
         void save(const T& t, const unsigned bytes = sizeof(T)) {
@@ -116,12 +128,11 @@ namespace tser
             std::memcpy(m_bytes.data() + m_bufferSize, std::addressof(t), bytes);
             m_bufferSize += bytes;
         }
-        //iterate over the members of our user defined types 
-        template<typename T, enable_for_members_t<T> = 0>
-        void save(const T& t) {
-            std::apply([&](auto&& ... memberVal) { (save(memberVal), ...); }, t.members());
+        //small helper so that we can use operator << to save any type
+        template<typename T>
+        friend BinaryArchive& operator<<(BinaryArchive& ba, T&& t) {
+            ba.save(std::forward<T>(t)); return ba;
         }
- 
         //stuff like std::vector and std::string, std::set
         template <template <typename...> class TContainer, typename T, enable_for_container_t<TContainer<T>> = 0>
         void load(TContainer<T>& container) {
@@ -167,6 +178,16 @@ namespace tser
             delete t;
             t = load<T*>();
         }
+        //we iterate through the members of all the types that implement the serializeable macro 
+        template<typename T, enable_for_members_t<T> = 0>
+        void load(T& t) {
+            std::apply([&](auto&& ... memberVal) { (load(memberVal), ...); }, t.members());
+        }
+        //here we invoke a custom load method for a type that provides this function
+        template<typename T, enable_for_custom_t<T> = 0>
+        void load(T& t) {
+            t.load(*this);
+        }
         //everything that is trivially copyable we just memcpy into the types
         template<typename T, enable_for_memcpy_t<T> = 0>
         void load(T& t) {
@@ -188,11 +209,7 @@ namespace tser
             }
             return t;
         }
-        //we iterate through the members of all the types that implement the serializeable macro 
-        template<typename T, enable_for_members_t<T> = 0>
-        void load(T& t) {
-            std::apply([&](auto&& ... memberVal) { (load(memberVal), ...); }, t.members());
-        }
+
         void reset() {
             m_bufferSize = 0;
             m_readOffset = 0;
@@ -207,12 +224,12 @@ namespace tser
         std::string_view getString() const {
             return std::string_view(m_bytes.data(), m_bufferSize);
         }
-
     private:
         std::string m_bytes = std::string(1024, '\0');
         //current bit offset
         size_t m_bufferSize = 0, m_readOffset = 0;
     };
+
     constexpr size_t nArgs(std::string_view str) {
         size_t nargs = 1; for (auto c : str) if (c == ',') ++nargs; return nargs;
     }
@@ -230,35 +247,9 @@ for(auto& strV : out){ next = ini.find_first_of(',', off); strV = ini.substr(off
 
 
 // #include "compare.hpp"
-// Licensed under the MIT License <http://opensource.org/licenses/MIT>.
-// SPDX-License-Identifier: MIT
-
 // #include "serialize.hpp"
 
-
-namespace tser::detail {
-    template <class Tuple, std::size_t... I>
-    bool compareTuples(const Tuple& lh, const Tuple& rh, std::index_sequence<I...>) {
-        auto compareEQ = [](const auto& lhs, const auto& rhs) { if constexpr (!tser::is_pointer_v<std::remove_reference_t<decltype(lhs)>>) {return lhs == rhs;}
-        else { if (lhs && rhs) { return *lhs == *rhs; } else if (!lhs && !rhs) { return true; } return false; } };
-        return (compareEQ(std::get<I>(lh), std::get<I>(rh)) &&  ...);
-    }
-}
-#define DEFINE_DEEP_POINTER_COMPARISION(Type)\
-friend bool operator==(const Type& lhs, const Type& rhs){ return tser::detail::compareTuples(lhs.members(), rhs.members(), std::make_index_sequence<std::tuple_size_v<decltype(lhs.members())>>{});}
-//if a complex type doesn't have a hash function and your too lazy to implement one, you could use this ugly hack
-#define DEFINE_HASHABLE(Type) \
-namespace std { \
-        template<> \
-        struct hash<Type> { \
-            size_t operator()(const Type& t) const { \
-                static tser::BinaryArchive bs; \
-                bs.reset(); bs.save(t); \
-                return std::hash<std::string_view>()(bs.getString()); \
-        } \
-    }; \
-}
-
+//implement comparision operators for tser classes that don't implement the operators themselves
 template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> && !tser::is_detected_v<tser::has_equal_t  , T>, int> = 0>
 inline bool operator==(const T& lhs, const T& rhs) { return lhs.members() == rhs.members(); };
 template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> && !tser::is_detected_v<tser::has_nequal_t , T>, int> = 0>
@@ -281,11 +272,7 @@ bool operator <(const T& lhs, const T& rhs) {
 }
 
 // #include "print.hpp"
-// Licensed under the MIT License <http://opensource.org/licenses/MIT>.
-// SPDX-License-Identifier: MIT
-
 // #include "serialize.hpp"
-
 #include <iostream>
 
 //overload for pair, which is needed to print maps (and pairs)
@@ -293,6 +280,7 @@ template<typename X, typename Y>
 std::ostream& operator <<(std::ostream& os, const std::pair<X, Y>& p) {
     return os << '{' << p.first << ',' << p.second << '}';
 }
+//overload for classes that implement the tser macro
 template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> && !tser::is_detected_v<tser::has_outstream_op_t, T>, int> = 0>
 std::ostream& operator<<(std::ostream& os, const T& t) {
     int i = -1, last = static_cast<int>(T::_memberNames.size()) - 1;
@@ -320,23 +308,15 @@ std::ostream& operator <<(std::ostream& os, const T& t) {
     else   return os << '{' << "null" << '}';
 }
 
-#define DEFINE_POINTER_PRINT(Type)\
-std::ostream& operator <<(std::ostream& os, const Type& ptr) {\
-    if (ptr) return os << '{' << *ptr << '}';\
-    else  return os << '{' << "null" << '}';\
-}
-
 
 // #include "base64encoding.hpp"
-
 // #include "serialize.hpp"
-
 
 namespace tser
 {
     //tables for the base64 conversions
     static constexpr auto g_encodingTable = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    static constexpr auto g_decodingTable = []() { std::array<char, 256> decodingTable{ -1 }; for (char i = 0; i < 64; ++i) decodingTable[static_cast<unsigned>(g_encodingTable[static_cast<size_t>(i)])] = i; return decodingTable; }();
+    static constexpr auto g_decodingTable = []() { std::array<char, 256> decodingTable{}; for (char i = 0; i < 64; ++i) decodingTable[static_cast<unsigned>(g_encodingTable[static_cast<size_t>(i)])] = i; return decodingTable; }();
 
     static std::string base64_encode(std::string_view in) {
         std::string out;
@@ -350,7 +330,6 @@ namespace tser
             }
         }
         if (valb > -6) out.push_back(g_encodingTable[((val << 8) >> (valb + 8)) & 0x3F]);
-        while (out.size() % 4) out.push_back('=');
         return out;
     }
 
@@ -358,7 +337,6 @@ namespace tser
         std::string out;
         int val = 0, valb = -8;
         for (char c : in) {
-            if (g_decodingTable[static_cast<unsigned char>(c)] == -1) break;
             val = (val << 6) + g_decodingTable[static_cast<unsigned char>(c)];
             valb += 6;
             if (valb >= 0) {

@@ -9,82 +9,145 @@
 #include <unordered_set>
 #include <optional>
 
-using namespace tser;
+//if you need deep pointer comparisions you could grab this macro
+namespace tser::detail {
+    template <class Tuple, std::size_t... I>
+    bool compareTuples(const Tuple& lh, const Tuple& rh, std::index_sequence<I...>) {
+        auto compareEQ = [](const auto& lhs, const auto& rhs) { if constexpr (!tser::is_pointer_v<std::remove_reference_t<decltype(lhs)>>) { return lhs == rhs; }
+        else { if (lhs && rhs) { return *lhs == *rhs; } else if (!lhs && !rhs) { return true; } return false; } };
+        return (compareEQ(std::get<I>(lh), std::get<I>(rh)) &&  ...);
+    }
+}
+#define DEFINE_DEEP_POINTER_COMPARISION(Type)\
+friend bool operator==(const Type& lhs, const Type& rhs){ return tser::detail::compareTuples(lhs.members(), rhs.members(), std::make_index_sequence<std::tuple_size_v<decltype(lhs.members())>>{});}
+//if a complex type doesn't have a hash function and your too lazy to implement one, you could use this ugly hack
+#define DEFINE_HASHABLE(Type) \
+namespace std { \
+        template<> \
+        struct hash<Type> { \
+            size_t operator()(const Type& t) const { \
+                tser::BinaryArchive bs; \
+                bs << t; \
+                return std::hash<std::string_view>()(bs.getString()); \
+        } \
+    }; \
+}
+
 
 
 TEST(binaryArchive, readBits)
 {
-       BinaryArchive binaryArchive;
-       binaryArchive.save(true);
-       binaryArchive.save(false);
-       binaryArchive.save(true);
-       binaryArchive.reset();
-       ASSERT_TRUE(binaryArchive.load<bool>());
-       ASSERT_FALSE(binaryArchive.load<bool>());
-       ASSERT_TRUE(binaryArchive.load<bool>());
+    tser::BinaryArchive binaryArchive;
+    binaryArchive.save(true);
+    binaryArchive.save(false);
+    binaryArchive.save(true);
+    binaryArchive.reset();
+    ASSERT_TRUE(binaryArchive.load<bool>());
+    ASSERT_FALSE(binaryArchive.load<bool>());
+    ASSERT_TRUE(binaryArchive.load<bool>());
 }
 
 
 TEST(binaryArchive, readInts)
 {
-       BinaryArchive binaryArchive;
-       binaryArchive.save(15);
-       binaryArchive.save(1);
-       binaryArchive.save(-15);
-       binaryArchive.reset();
-       ASSERT_TRUE(binaryArchive.load<int>() == 15);
-       ASSERT_TRUE(binaryArchive.load<int>() == 1);
-       ASSERT_TRUE(binaryArchive.load<int>() == -15);
+    tser::BinaryArchive binaryArchive;
+    binaryArchive.save(15);
+    binaryArchive.save(1);
+    binaryArchive.save(-15);
+    binaryArchive.reset();
+    ASSERT_TRUE(binaryArchive.load<int>() == 15);
+    ASSERT_TRUE(binaryArchive.load<int>() == 1);
+    ASSERT_TRUE(binaryArchive.load<int>() == -15);
 }
 
-enum class SomeEnum {A,B,C};
+enum class SomeEnum { A, B, C };
 TEST(binaryArchive, readPair)
 {
-    BinaryArchive binaryArchive;
+    tser::BinaryArchive binaryArchive;
     auto somePair = std::pair(SomeEnum::A, std::string("A"));
-    binaryArchive.save(somePair);
+    binaryArchive << somePair;
     ASSERT_TRUE(binaryArchive.load<decltype(somePair)>() == somePair);
 }
 
 TEST(binaryArchive, readTuple)
 {
-    BinaryArchive binaryArchive;
+    tser::BinaryArchive binaryArchive;
     auto someTuple = std::make_tuple(1, 2.0, std::string("Hello"));
     auto someTrivialTuple = std::make_tuple(1, 2.0);
-    binaryArchive.save(someTuple);
-    binaryArchive.save(someTrivialTuple);
+    binaryArchive << someTuple;
+    binaryArchive << someTrivialTuple;
     ASSERT_TRUE(binaryArchive.load<decltype(someTuple)>() == someTuple);
     ASSERT_EQ(binaryArchive.load<decltype(someTrivialTuple)>(), someTrivialTuple);
 }
 
 TEST(binaryArchive, readArray)
 {
-    BinaryArchive binaryArchive;
+    tser::BinaryArchive binaryArchive;
     auto someArray = std::array<std::string, 3>{"abc", "def", "ghi"};
-    binaryArchive.save(someArray);
+    binaryArchive << someArray;
     auto loadedRawArray = binaryArchive.load<decltype(someArray)>();
     ASSERT_EQ(loadedRawArray, someArray);
 }
 
 TEST(binaryArchive, readRawPtr)
 {
-    BinaryArchive binaryArchive;
+    tser::BinaryArchive binaryArchive;
     auto someArray = new std::string("Hello World!");
-    binaryArchive.save(someArray);
+    binaryArchive << someArray;
     ASSERT_TRUE(*std::unique_ptr<std::string>(binaryArchive.load<decltype(someArray)>()) == "Hello World!");
 }
 
+struct CustomPointWithMacro
+{
+    DEFINE_SERIALIZABLE(CustomPointWithMacro, x, y)
+    void save(tser::BinaryArchive& ba) const {
+        ba.save(x + y);
+    }
+    void load(tser::BinaryArchive& ba) {
+        x = ba.load<int>();
+    }
+    int x = 1, y = 1;
+};
+
+TEST(binaryArchive, customSerialization)
+{
+    tser::BinaryArchive ba;
+    ba.save(CustomPointWithMacro{ 3,4 });
+    auto loadedPoint = ba.load<CustomPointWithMacro>();
+    ASSERT_EQ(loadedPoint.x, 7);
+    ASSERT_EQ(loadedPoint.y, 1);
+}
+
+struct CustomPointNoMacro
+{
+    void save(tser::BinaryArchive& ba) const {
+        ba.save(x + y);
+    }
+    void load(tser::BinaryArchive& ba) {
+        x = ba.load<int>();
+    }
+    int x = 1, y = 2;
+};
+
+TEST(binaryArchive, customSerializationNoMacro)
+{
+    tser::BinaryArchive ba;
+    ba.save(CustomPointNoMacro{ 5,6 });
+    auto loadedPoint = ba.load<CustomPointNoMacro>();
+    ASSERT_EQ(loadedPoint.x, 11);
+    ASSERT_EQ(loadedPoint.y, 2);
+}
 struct Point
 {
     DEFINE_SERIALIZABLE(Point, x, y)
     short x = 0, y = 0;
 };
 
-TEST(binaryArchive, readCustomPoints)
+TEST(binaryArchive, readPoints)
 {
-    BinaryArchive binaryArchive;
-    binaryArchive.save(Point{1,2});
-    binaryArchive.save(Point{5,6});
+    tser::BinaryArchive binaryArchive;
+    binaryArchive << Point{ 1,2 };
+    binaryArchive << Point{ 5,6 };
     ASSERT_TRUE((binaryArchive.load<Point>() == Point{ 1,2 }));
     ASSERT_TRUE((binaryArchive.load<Point>() == Point{ 5,6 }));
 }
@@ -105,13 +168,13 @@ struct PointerWrapper
 
 TEST(binaryArchive, smartPointerOfCustom)
 {
-    BinaryArchive binaryArchive;
-    PointerWrapper smartWrapper{new int(5), std::unique_ptr<Point>(new Point{1,2}), std::shared_ptr<Point>(new Point{1,2}) };
+    tser::BinaryArchive binaryArchive;
+    PointerWrapper smartWrapper{ new int(5), std::unique_ptr<Point>(new Point{1,2}), std::shared_ptr<Point>(new Point{1,2}) };
     //the content of a raw pointer is serialized, not the address
-    binaryArchive.save(&smartWrapper);
+    binaryArchive << &smartWrapper;
     //the serialized layout of shared_ptr<T>, unique_ptr<T>, optional<T> and T* are all the same
     //so if I really wanted to I could load T* as optional
-    auto loadedSmartWrapper =  binaryArchive.load<std::optional<PointerWrapper>>();
+    auto loadedSmartWrapper = binaryArchive.load<std::optional<PointerWrapper>>();
     //here we test if the deep pointer comparision macro works (as well as the serialization and deserialization of T*, unique_ptr<T>, shared_ptr<T> and optional<T>)
     ASSERT_EQ(smartWrapper, *loadedSmartWrapper);
 }
@@ -124,7 +187,7 @@ struct ComplexType
     DEFINE_SERIALIZABLE(ComplexType, x1, x2, intArray, ints, mapping, sets, opt)
     Point x1, x2;
     std::array<Point, 4> intArray = { x1, x2, x1, x2 };
-    std::vector<char> ints = { '1','2','3'};
+    std::vector<char> ints = { '1','2','3' };
     std::unordered_map<char, char> mapping{ {'a', 'b'},  {'b', 'c'} };
     std::unordered_set<Point> sets{ Point{1,2}, Point{3,4} };
 
@@ -133,21 +196,21 @@ struct ComplexType
 
 TEST(binaryArchive, complexType)
 {
-       BinaryArchive binaryArchive;
-       ComplexType c(Point{ 1,2 }, Point{ 3, 4 });
-       c.ints.push_back('4');
-       c.opt = std::make_optional(Point{ 7,8 });
-       binaryArchive.save(c);
-       auto str = base64_encode(binaryArchive.getString());
-       BinaryArchive readStream;
-       readStream << str;
-       std::cout << c;
-       ComplexType c2;
-       c2.ints.clear();
-       c2.sets.clear();
-       readStream.load(c2);
+    tser::BinaryArchive binaryArchive;
+    ComplexType c(Point{ 1,2 }, Point{ 3, 4 });
+    c.ints.push_back('4');
+    c.opt = std::make_optional(Point{ 7,8 });
+    binaryArchive << c;
+    auto str = tser::base64_encode(binaryArchive.getString());
+    tser::BinaryArchive readStream;
+    readStream.initialize(tser::base64_decode(str));
+    std::cout << c;
+    ComplexType c2;
+    c2.ints.clear();
+    c2.sets.clear();
+    readStream.load(c2);
 
-       ASSERT_EQ(c, c2);
+    ASSERT_EQ(c, c2);
 }
 
 TEST(hashing, points)
