@@ -110,7 +110,7 @@ int main()
     using namespace cpp_serializers_benchmark;
     tser::BinaryArchive ba;
     auto allTheMonsters = cpp_serializers_benchmark::createMonsters(20);
-    ba << allTheMonsters;
+    ba & allTheMonsters;
     for (auto& m : allTheMonsters)
     {
         std::cout << m << "\n";

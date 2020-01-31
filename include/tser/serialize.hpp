@@ -127,7 +127,7 @@ namespace tser
         }
         //small helper so that we can use operator << to save any type
         template<typename T>
-        friend BinaryArchive& operator<<(BinaryArchive& ba, T&& t) {
+        friend BinaryArchive& operator&(BinaryArchive& ba, T&& t) {
             ba.save(std::forward<T>(t)); return ba;
         }
         //stuff like std::vector and std::string, std::set
