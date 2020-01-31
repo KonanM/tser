@@ -239,6 +239,12 @@ constexpr inline decltype(auto) members() { return std::tie(__VA_ARGS__); }  \
 static constexpr std::string_view _typeName = #Type;\
 static constexpr std::array<std::string_view, tser::nArgs(#__VA_ARGS__)> _memberNames = [](){ std::array<std::string_view, tser::nArgs(#__VA_ARGS__)> out{}; \
 size_t off = 0, next = 0; std::string_view ini(#__VA_ARGS__); \
-for(auto& strV : out){ next = ini.find_first_of(',', off); strV = ini.substr(off, next - off); off = next + 1;} return out;}();
+for(auto& strV : out){ next = ini.find_first_of(',', off); strV = ini.substr(off, next - off); off = next + 1;} return out;}();\
+template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> &&  !tser::is_detected_v<tser::has_equal_t, T>, int> = 0>\
+friend bool operator==(const Type& lhs, const T& rhs) { return lhs.members() == rhs.members(); };\
+template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> &&  !tser::is_detected_v<tser::has_nequal_t, T>, int> = 0>\
+friend bool operator!=(const Type& lhs, const T& rhs) { return !(lhs == rhs); };\
+template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> &&  !tser::is_detected_v<tser::has_smaller_t, T>, int> = 0>\
+friend bool operator< (const Type& lhs, const T& rhs) { return lhs.members() < rhs.members(); };\
 
 

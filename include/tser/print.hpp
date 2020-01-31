@@ -1,7 +1,8 @@
 #pragma once
 #include "serialize.hpp"
 #include <iostream>
-
+namespace std
+{ 
 //overload for pair, which is needed to print maps (and pairs)
 template<typename X, typename Y>
 std::ostream& operator <<(std::ostream& os, const std::pair<X, Y>& p) {
@@ -35,3 +36,4 @@ std::ostream& operator <<(std::ostream& os, const T& t) {
     else   return os << '{' << "null" << '}';
 }
 
+}
