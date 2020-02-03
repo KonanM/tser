@@ -97,6 +97,17 @@ TEST(binaryArchive, readRawPtr)
     ASSERT_TRUE(*std::unique_ptr<std::string>(binaryArchive.load<decltype(someArray)>()) == "Hello World!");
 }
 
+TEST(binaryArchive, readCArray)
+{
+    tser::BinaryArchive binaryArchive;
+    int someInts[4] = { 1,2,3,4 };
+    binaryArchive& someInts;
+    int loadedInts[4];
+    binaryArchive.load(loadedInts);
+    ASSERT_TRUE(std::equal(someInts, someInts + 4, loadedInts, loadedInts + 4));
+}
+
+
 struct CustomPointWithMacro
 {
     DEFINE_SERIALIZABLE(CustomPointWithMacro, x, y)
