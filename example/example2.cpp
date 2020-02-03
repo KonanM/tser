@@ -107,7 +107,6 @@ namespace cpp_serializers_benchmark
 #include <algorithm>
 int main()
 {
-    using namespace cpp_serializers_benchmark;
     tser::BinaryArchive ba;
     auto allTheMonsters = cpp_serializers_benchmark::createMonsters(20);
     ba & allTheMonsters;
@@ -117,7 +116,6 @@ int main()
     }
 
     auto allTheLoadedMonsters =  ba.load<std::vector<cpp_serializers_benchmark::Monster>>();
-    assert(std::equal(allTheMonsters.begin(), allTheMonsters.end(), allTheLoadedMonsters.begin(), allTheLoadedMonsters.end()));
-
+    assert(allTheMonsters == allTheLoadedMonsters);
 }
 

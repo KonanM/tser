@@ -44,7 +44,6 @@ namespace tser
     template<class T> constexpr bool is_trivial_v = std::is_trivially_copyable_v<T>;
     template<class T> constexpr bool is_pointer_v = std::is_pointer_v<T> || tser::is_detected_v<has_element_t, T>;
 
-
     class BinaryArchive {
     public:
         template<class T> using has_custom_save_t = decltype(std::declval<T>().save(std::declval<BinaryArchive&>()));
@@ -54,6 +53,7 @@ namespace tser
         template<class T> using enable_for_members_t = std::enable_if_t<is_detected_v<has_members_t, T> && !is_detected_v<has_custom_save_t, T>, int>;
         template<class T> using enable_for_smart_ptr_t = std::enable_if_t<is_detected_v<has_element_t, T>, int>;
         template<class T> using enable_for_optional_t = std::enable_if_t<is_detected_v<has_optional_t, T>, int>;
+        template<class T> using enable_for_pointer_t = std::enable_if_t<std::is_pointer_v<std::remove_cv_t<std::remove_reference_t<T>>>, int>;
         template<class T> using enable_for_tuple_t = std::enable_if_t<is_detected_v<has_tuple_t, T> && !is_trivial_v<T>, int>;
         template<class T> using enable_for_custom_t = std::enable_if_t<is_detected_v<has_custom_save_t, T>, int>;
         template<class T> using enable_for_memcpy_t = std::enable_if_t<is_trivial_v<T> && !std::is_pointer_v<T> && !is_detected_v<has_members_t, T> && !is_detected_v<has_optional_t, T> && !is_detected_v<has_custom_save_t, T>, int>;
@@ -96,8 +96,14 @@ namespace tser
         void save(const T& opt) {
             savePtrLike(opt);
         }
-        template<typename T>
-        void save(const T* ptr) {
+        template<typename T, int N>
+        void save(T(&carray)[N])
+        {
+            for (auto& val : carray)
+                save(val);
+        }
+        template<typename T, enable_for_pointer_t<T> = 0>
+        void save(T&& ptr) {
             savePtrLike(ptr);
         }
         template<typename T>
@@ -170,10 +176,16 @@ namespace tser
             t = load<bool>() ? TPtr<T>(load<T>()) : TPtr<T>();
         }
         //raw pointers
-        template<typename T>
-        void load(T*& t) {
+        template<typename T, enable_for_pointer_t<T> = 0>
+        void load(T& t) {
             delete t;
-            t = load<T*>();
+            t = load<T>();
+        }
+        template<typename T, int N>
+        void load(T(&carray)[N])
+        {
+            for (auto& val : carray)
+                load(val);
         }
         //we iterate through the members of all the types that implement the serializeable macro 
         template<typename T, enable_for_members_t<T> = 0>
@@ -206,7 +218,6 @@ namespace tser
             }
             return t;
         }
-
         void reset() {
             m_bufferSize = 0;
             m_readOffset = 0;
@@ -246,5 +257,4 @@ template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T
 friend bool operator!=(const Type& lhs, const T& rhs) { return !(lhs == rhs); };\
 template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> &&  !tser::is_detected_v<tser::has_smaller_t, T>, int> = 0>\
 friend bool operator< (const Type& lhs, const T& rhs) { return lhs.members() < rhs.members(); };\
-
 
