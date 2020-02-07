@@ -30,7 +30,7 @@ namespace std
         return os << static_cast<std::underlying_type_t<T>>(t);
     }
     //support for optional like types
-    template<typename T, std::enable_if_t<(tser::is_detected_v<tser::has_optional_t, T> && !tser::is_detected_v<tser::has_element_t, T>) && !tser::is_detected_v<tser::has_outstream_op_t, T>, int> = 0>
+    template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_optional_t, T> && !tser::is_detected_v<tser::has_element_t, T> && !tser::is_detected_v<tser::has_outstream_op_t, T>, int> = 0>
     std::ostream& operator <<(std::ostream& os, const T& t) {
         if (t) return os << '{' << *t << '}';
         else   return os << '{' << "null" << '}';
