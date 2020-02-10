@@ -13,7 +13,7 @@ I wanted a library that was small, but allowed me to avoid as much boilerplate a
 
 **tldr:** be quicker to serialize your object, print it to the console, compare it and load it from a string than to figure out how other serialization libraries work. 
 
-If you need a battle tested, non-intrusive and feature rich serialization libary, please have a look at [Boost](https://www.boost.org/doc/libs/1_72_0/libs/serialization/doc/index.html), [Cereal](https://uscilab.github.io/cereal/) [Bitsery](https://github.com/fraillt/bitsery), [Protobuf](https://developers.google.com/protocol-buffers), [Flatbuffers](https://google.github.io/flatbuffers/), [Yas](https://github.com/niXman/yas). They all provide a better feature set and better flexibility. Tser is meant to be tiny - copy one small header put a macro into a few places and be good to go. 
+If you need a battle tested, non-intrusive and feature rich serialization libary, please have a look at [Boost](https://www.boost.org/doc/libs/1_72_0/libs/serialization/doc/index.html), [Cereal](https://uscilab.github.io/cereal/), [Bitsery](https://github.com/fraillt/bitsery), [Protobuf](https://developers.google.com/protocol-buffers), [Flatbuffers](https://google.github.io/flatbuffers/), [Yas](https://github.com/niXman/yas). They all provide a better feature set and better flexibility. Tser is meant to be tiny - copy one small header put a macro into a few places and be good to go. 
 
 ## Design goals
 * serialization of nearly all of the STL containers and types, as well as custom containers that follow STL conventions
@@ -30,7 +30,8 @@ If you need a battle tested, non-intrusive and feature rich serialization libary
 * Dependency-free
 * Supports ```std::array, std::vector, std::list, std::deque, std::string, std::unique_ptr, std::shared_ptr, std::optional, std::tuple, std::map, std::set, std::unordered_map, std::unordered_set, std::multiset, std::multimap, std::unordered_multimap, std::unordered_multiset ```
 * Supports serialization of user defined types that follow standard container/type conventions
-* Supports recursive parsing of types 
+* Supports recursive parsing of types (e.g. containers/pointers of serializable types)
+* Supports pretty printing to the console
 * Supports printing of the serialized representation via base64 encoding
 
 ## Basic Example
@@ -74,7 +75,8 @@ int main()
     std::cout << loadedRobot; // prints Robot:{point=Point:{x=3, y=4}, item={R}}
 }
 ```
-## Example from CppSerializersBenchmark
+## Pretty printing example
+Datastructures taken from [Cpp Serializer Benchmark](https://github.com/fraillt/cpp_serializers_benchmark/blob/master/testing_core/types.cpp)
 
 ```cpp
 struct Vec3 {
@@ -108,7 +110,7 @@ struct Monster {
 };
 //see example2.cpp
 int main(){
-    Monster randomMonster = 
+    Monster randomMonster = createRandomMonster();
     std::cout << randomMonster;
 //will print something like
 //Monster:{pos=Vec3:{x=-0.0304176, y=0.594657, z=-0.185052}, mana=64, hp=408, name=QF, 
