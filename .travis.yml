@@ -20,53 +20,11 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - llvm-toolchain-xenial-5.0
-          packages:
-            - clang-5.0
-      env:
-        - CXX_COMPILER=clang++-5.0 CC_COMPILER=clang-5.0
-
-    - os: linux
-      compiler: clang++
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-xenial-6.0
-          packages:
-            - clang-6.0
-      env:
-        - CXX_COMPILER=clang++-6.0 CC_COMPILER=clang-6.0
-
-    - os: linux
-      compiler: clang++
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-xenial-7
-          packages:
-            - clang-7
-      env:
-        - CXX_COMPILER=clang++-7 CC_COMPILER=clang-7
-
-    - os: linux
-      compiler: clang++
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
             - llvm-toolchain-xenial-8
           packages:
-            - clang-8
+            - clang-9
       env:
-        - CXX_COMPILER=clang++-8 CC_COMPILER=clang-8
-
-    - os: osx
-      compiler: clang++
-      osx_image: xcode10.2
-      env:
-        - CXX_COMPILER=clang++ CC_COMPILER=clang
+        - CXX_COMPILER=clang++-9 CC_COMPILER=clang-9
 
   allow_failures: # gcc-9 yeat unstable.
     - os: linux
@@ -82,16 +40,9 @@ install:
     # If linux and clang install the right version of libc++.
     if [[ "${TRAVIS_OS_NAME}" == "linux" && "${CXX%%+*}" == "clang" && -n "$(ls -A ${LLVM_INSTALL})" ]]; then
       LLVM_INSTALL=${DEPS_DIR}/llvm/install
-      if   [[ "${CXX}" == "clang++-3.5" ]]; then LLVM_VERSION="3.5.2";
-      elif [[ "${CXX}" == "clang++-3.6" ]]; then LLVM_VERSION="3.6.2";
-      elif [[ "${CXX}" == "clang++-3.7" ]]; then LLVM_VERSION="3.7.1";
-      elif [[ "${CXX}" == "clang++-3.8" ]]; then LLVM_VERSION="3.8.1";
-      elif [[ "${CXX}" == "clang++-3.9" ]]; then LLVM_VERSION="3.9.1";
-      elif [[ "${CXX}" == "clang++-4.0" ]]; then LLVM_VERSION="4.0.1";
-      elif [[ "${CXX}" == "clang++-5.0" ]]; then LLVM_VERSION="5.0.2";
-      elif [[ "${CXX}" == "clang++-6.0" ]]; then LLVM_VERSION="6.0.1";
-      elif [[ "${CXX}" == "clang++-7" ]]; then LLVM_VERSION="7.0.1";
+      if   [[ "${CXX}" == "clang++-7" ]]; then LLVM_VERSION="7.0.1";
       elif [[ "${CXX}" == "clang++-8" ]]; then LLVM_VERSION="8.0.0";
+      elif [[ "${CXX}" == "clang++-9" ]]; then LLVM_VERSION="9.0.0";
       fi
       LLVM_URL="http://llvm.org/releases/${LLVM_VERSION}/llvm-${LLVM_VERSION}.src.tar.xz"
       LIBCXX_URL="http://llvm.org/releases/${LLVM_VERSION}/libcxx-${LLVM_VERSION}.src.tar.xz"
@@ -122,7 +73,7 @@ before_script:
   - rm -rf build
   - mkdir -p build
   - cd build
-  - cmake -G "Unix Makefiles" ..
+  - cmake -G "Ninja" ..
 
 script:
   - cmake --build . -- -j${JOBS}
