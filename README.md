@@ -7,13 +7,13 @@
 [![Percentage of issues still open](http://isitmaintained.com/badge/open/konanM/tser.svg)](http://isitmaintained.com/project/konanM/tser "Percentage of issues still open")
 ## Why another C++ serialization library?
 
-I searched for a small C++ serialization library for some competitive programming contest and didn't find anything that suited my needs. 
+I searched for a small C++ serialization library (<20 KB) for some competitive programming contest and didn't find anything that suited my needs. 
 
-I wanted a library that was small, but allowed me to avoid as much boilerplate as possible. Especially if you are quickly prototyping you want to avoid implementing serialization and comparision manually.
+I wanted a library that was small, but allowed me to avoid as much boilerplate as possible. Especially if you are quickly prototyping you want to avoid implementing serialization, printing and comparision operators manually.
 
 **tldr:** be quicker to serialize your object, print it to the console, compare it and load it from a string than to figure out how other serialization libraries work. 
 
-If you need a battle tested and feature rich serialization libary, please have a look at [Boost](https://www.boost.org/doc/libs/1_72_0/libs/serialization/doc/index.html), [Cereal](https://uscilab.github.io/cereal/) [Bitsery](https://github.com/fraillt/bitsery), [Protobuf](https://developers.google.com/protocol-buffers), [Flatbuffers](https://google.github.io/flatbuffers/), [Yas](https://github.com/niXman/yas). They all provide a better feature set and better flexibility. Tser is meant to be tiny - copy one small header put a macro into a few places and be good to go. 
+If you need a battle tested, non-intrusive and feature rich serialization libary, please have a look at [Boost](https://www.boost.org/doc/libs/1_72_0/libs/serialization/doc/index.html), [Cereal](https://uscilab.github.io/cereal/) [Bitsery](https://github.com/fraillt/bitsery), [Protobuf](https://developers.google.com/protocol-buffers), [Flatbuffers](https://google.github.io/flatbuffers/), [Yas](https://github.com/niXman/yas). They all provide a better feature set and better flexibility. Tser is meant to be tiny - copy one small header put a macro into a few places and be good to go. 
 
 ## Design goals
 * serialization of nearly all of the STL containers and types, as well as custom containers that follow STL conventions
@@ -28,12 +28,12 @@ If you need a battle tested and feature rich serialization libary, please have a
 * Header only version is split so that an even more minimal subset of the libary can be used
 * Cross compiler (supports gcc, clang, msvc) and warning free (W4, Wall, Wextra)
 * Dependency-free
-* Supports ```std::array, std::vector, std::string, std::unique_ptr, std::shared_ptr, std::optional, std::tuple, std::map, std::set, std::unordered_map, std::unordered_set ```
+* Supports ```std::array, std::vector, std::list, std::deque, std::string, std::unique_ptr, std::shared_ptr, std::optional, std::tuple, std::map, std::set, std::unordered_map, std::unordered_set, std::multiset, std::multimap, std::unordered_multimap, std::unordered_multiset ```
 * Supports serialization of user defined types that follow standard container/type conventions
 * Supports recursive parsing of types 
-* Supports printing of the serailized representation
+* Supports printing of the serialized representation via base64 encoding
 
-## Example
+## Basic Example
 
 ```Cpp
 #include <cassert>
@@ -74,9 +74,55 @@ int main()
     std::cout << loadedRobot; // prints Robot:{point=Point:{x=3, y=4}, item={R}}
 }
 ```
+## Example from CppSerializersBenchmark
 
-Here I want to demonstrate how raw pointers behave
+```cpp
+struct Vec3 {
+    DEFINE_SERIALIZABLE(Vec3, x, y, z)
+    float x, y, z;
+    //the DEFINE_SERIALIZABLE detects custom comparision functions and will only provide the comparision operators
+    //that aren't defined (!= is defined in terms of the equality operator !(lhs == rhs))
+    friend bool operator==(const Vec3& lhs, const Vec3& rhs){
+        constexpr float eps = 1e-6f;
+        return abs(lhs.x - rhs.x) < eps && abs(lhs.y - rhs.y) < eps && abs(lhs.y - rhs.y) < eps;
+    }
+};
 
+struct Weapon {
+    DEFINE_SERIALIZABLE(Weapon, name, damage)
+    std::string name;
+    int16_t damage;
+};
+
+struct Monster {
+    DEFINE_SERIALIZABLE(Monster, pos, mana, hp, name, inventory, color, weapons, equipped, path)
+    Vec3 pos;
+    int16_t mana;
+    int16_t hp;
+    std::string name;
+    std::vector<int> inventory;
+    Color color;
+    std::vector<Weapon> weapons;
+    Weapon equipped;
+    std::vector<Vec3> path;
+};
+//see example2.cpp
+int main(){
+    Monster randomMonster = 
+    std::cout << randomMonster;
+//will print something like
+//Monster:{pos=Vec3:{x=-0.0304176, y=0.594657, z=-0.185052}, mana=64, hp=408, name=QF, 
+//inventory=[9, 8, 1, 2, 10, 6, 8, 10], 
+//color=Green, 
+//weapons=[Weapon:{name=MKHPC, damage=19086}, Weapon:{name=BQ, damage=24510}, Weapon:{name=VBRM, damage=24933}, Weapon:{name=EZSI, damage=7630}, Weapon:{name=ISKMAZRQMJ, damage=9684}, Weapon:{name=TUBA, damage=27054}, Weapon:{name=OS, damage=14409}], 
+//equipped=Weapon:{name=CEAJMS, damage=1203}, 
+//path=[Vec3:{x=0.766801, y=0.701376, z=-0.210043}, Vec3:{x=-0.56087, y=-0.841724, z=-0.714148}, Vec3:{x=0.640182, y=0.64889, z=-0.272207}]}
+
+}
+```
+
+## How do pointers bevave for serialization?
+**tldr:** pointers behave like std::optional. When they are not nullptr the pointed to object is serialized.
 ```Cpp
 struct PointerWrapper
 {
@@ -101,7 +147,7 @@ int main()
 
 ## How does it work?
 
-Internally the mechanism by the macro is actually rather simply. It would also be possible to implement this manually for every type.
+Internally the macro exposes a tuple of the members and the name of the members. It would also be possible to implement this manually for every type.
 
 ```cpp
 struct Point {
@@ -115,18 +161,25 @@ struct Point {
 ```
 By provoding a function ```members()``` to iterate over the types we can now use SFINAE along with the detection idiom to detect how a type should be serialized.
 The printing of types is realized with the static ```_memberNames``` field.
+
+## Integration
+tser.hpp is the single required file in the folder single_header/tser. Add the folder folder as include directory or copy it into one of your include directories.
+If you really just want to use tser for single file rapid prototyping it's also small enough to just copy the contents of the file tser.hpp on top of the file your working on.
+
+```#include <tser/tser.hpp>```
+
 ## Limitations
 * Only supports default constructible types
-* Uses a macro to be able to reflect over members of a given type
-* No safety checks, no versioning, types need the same binary layout on a different platform
+* Is intrusive and uses a macro to be able to reflect over members of a given type
+* No safety checks, no versioning, types need the same binary layout on a different platforms
 * No support for ```std::variant``` (unless trivially copyable)
+* No support for ```std::stack, std::priority_queue, std::string_view```
 * Needs a recent compiler (constexpr std::string_view)
 
 ## Compiler support
 See also https://godbolt.org/z/fmnm7r
-* MSVC > 19.22
-* Clang > 9.0
-* Gcc > 7.3
+* MSVC >= 19.22
+* Clang >= 9.0
+* Gcc >= 7.3
 
 ## Licensed under the [MIT License](LICENSE)
-#
