@@ -26,16 +26,20 @@ namespace cpp_serializers_benchmark
     using namespace::tser;
     struct Vec3 {
         DEFINE_SERIALIZABLE(Vec3, x, y, z)
-            float x, y, z;
+        float x, y, z;
+        //the DEFINE_SERIALIZABLE detects custom comparision functions and will only provide the comparision operators
+        //that aren't defined (!= is defined in terms of the equality operator !(lhs == rhs))
+        friend bool operator==(const Vec3& lhs, const Vec3& rhs){
+            constexpr float eps = 1e-6f;
+            return abs(lhs.x - rhs.x) < eps && abs(lhs.y - rhs.y) < eps && abs(lhs.y - rhs.y) < eps;
+        }
     };
 
     struct Weapon {
         DEFINE_SERIALIZABLE(Weapon, name, damage)
-
         std::string name;
         int16_t damage;
     };
-
 
     struct Monster {
         DEFINE_SERIALIZABLE(Monster, pos, mana, hp, name, inventory, color, weapons, equipped, path)
@@ -53,10 +57,10 @@ namespace cpp_serializers_benchmark
     {
         using uniform_int_distribution::uniform_int_distribution;
         template<typename Engine>
-        char operator()(Engine& eng) { return static_cast<char>(eng()); }
+        char operator()(Engine& eng) { return static_cast<char>(uniform_int_distribution::operator()(eng)); }
     };
 
-    static random_char_dist rand_char((char)'A', (char)'Z');
+    static random_char_dist rand_char('A', 'Z');
     static std::uniform_int_distribution<> rand_len(1, 10);
     static std::uniform_int_distribution<int16_t> rand_nr(0);
     static std::uniform_real_distribution<float> rand_float(-1.0f, 1.0f);
