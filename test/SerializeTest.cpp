@@ -170,8 +170,7 @@ DEFINE_HASHABLE(Point)
 struct PointerWrapper
 {
     DEFINE_SERIALIZABLE(PointerWrapper, intPtr, unique, shared)
-        DEFINE_DEEP_POINTER_COMPARISION(PointerWrapper)
-    PointerWrapper() = default;
+    DEFINE_DEEP_POINTER_COMPARISION(PointerWrapper)
     ~PointerWrapper() { delete intPtr; }
     int* intPtr = nullptr;
     std::unique_ptr<Point> unique;
