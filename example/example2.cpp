@@ -20,7 +20,7 @@ namespace cpp_serializers_benchmark
     enum class Color : uint8_t { Red, Green, Blue };
 
     std::ostream& operator <<(std::ostream& os, const Color& c) {
-        return os << (c == Color::Blue ? "Blue" : c == Color::Green ? "Green" : "Blue");
+        return os << (c == Color::Blue ? "Blue" : c == Color::Green ? "Green" : "Red");
     }
 
     using namespace::tser;
