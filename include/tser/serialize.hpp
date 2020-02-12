@@ -10,6 +10,25 @@
 
 namespace tser
 {
+    template<typename T>
+    size_t encodeVarInt(T value, char* output) {
+        size_t i = 0;
+        if constexpr (std::is_signed_v<T>)
+            value = value << 1 ^ (value >> (sizeof(T) * 8 - 1));
+        for (; value > 127; ++i, value >>= 7)
+            output[i] = static_cast<uint8_t>(value & 127) | 128;
+        output[i++] = static_cast<uint8_t>(value) & 127;
+        return i;
+    }
+    template<typename T>
+    size_t decodeVarInt(T& value, char* input) {
+        size_t i = 0;
+        for (value = 0; i == 0 || (input[i - 1] & 128); i++)
+            value |= static_cast<T>(input[i] & 127) << (7 * i);
+        if constexpr (std::is_signed_v<T>)
+            value = (value & 1) ? -static_cast<T>((value + 1) >> 1) : (value + 1) >> 1;
+        return i;
+    }
     //implementation details for is_detected
     namespace detail {
         struct ns {
@@ -27,6 +46,7 @@ namespace tser
             using type = Op<Args...>;
         };
     } // namespace detail
+
     // we need a bunch of template metaprogramming for being able to differentiate between different types 
     template <template<class...> class Op, class... Args>
     constexpr bool is_detected_v = detail::detector<detail::ns, void, Op, Args...>::value_t::value;
@@ -62,7 +82,7 @@ namespace tser
         //serialization for vector like and set like containers
         template <template <typename...> class TContainer, typename T, enable_for_container_t<TContainer<T>> = 0>
         void save(const TContainer<T>& container) {
-            save(static_cast<unsigned short>(std::size(container)));
+            save(std::size(container));
             for (auto& val : container)
                 save(val);
         }
@@ -80,7 +100,7 @@ namespace tser
         //serialization for map like containers with key value pairs
         template <typename T, enable_for_map_t<T> = 0>
         void save(const T& mapT) {
-            save(static_cast<unsigned short>(mapT.size()));
+            save(mapT.size());
             for (auto& [key, value] : mapT) {
                 save(key);
                 save(value);
@@ -128,8 +148,12 @@ namespace tser
         void save(const T& t, const unsigned bytes = sizeof(T)) {
             if (m_bufferSize + bytes > m_bytes.size())
                 m_bytes.resize((m_bufferSize + bytes) * 2);
-            std::memcpy(m_bytes.data() + m_bufferSize, std::addressof(t), bytes);
-            m_bufferSize += bytes;
+            if constexpr (!std::is_floating_point_v<T> && !std::is_enum_v<T> && sizeof(T) > 2)
+                m_bufferSize += encodeVarInt(t, m_bytes.data() + m_bufferSize);
+            else{
+                std::memcpy(m_bytes.data() + m_bufferSize, std::addressof(t), bytes);
+                m_bufferSize += bytes;
+            }
         }
         //small helper so that we can use operator << to save any type
         template<typename T>
@@ -139,7 +163,7 @@ namespace tser
         //stuff like std::vector and std::string, std::set
         template <template <typename...> class TContainer, typename T, enable_for_container_t<TContainer<T>> = 0>
         void load(TContainer<T>& container) {
-            const unsigned short size = load<unsigned short>();
+            const auto size = load<decltype(container.size())>();
             container.clear();
             for (int i = 0; i < size; ++i)
                 container.insert(container.end(), load<T>());
@@ -159,7 +183,7 @@ namespace tser
         template <template <typename...> class TMap, class TKey, class TVal, enable_for_map_t<TMap<TKey, TVal>> = 0>
         void load(TMap<TKey, TVal>& mapT) {
             mapT.clear();
-            const unsigned short size = load<unsigned short>();
+            const auto size = load<decltype(mapT.size())>();
             for (int i = 0; i < size; ++i) {
                 auto key = load<TKey>();
                 mapT[std::move(key)] = load<TVal>();
@@ -200,8 +224,12 @@ namespace tser
         //everything that is trivially copyable we just memcpy into the types
         template<typename T, enable_for_memcpy_t<T> = 0>
         void load(T& t) {
-            std::memcpy(&t, m_bytes.data() + m_readOffset, sizeof(T));
-            m_readOffset += sizeof(T);
+            if constexpr (!std::is_floating_point_v<T> && !std::is_enum_v <T> && sizeof(T) > 2)
+                m_readOffset += decodeVarInt(t, m_bytes.data() + m_readOffset);
+            else{
+                std::memcpy(&t, m_bytes.data() + m_readOffset, sizeof(T));
+                m_readOffset += sizeof(T);
+            }
         }
         //convenience function to load a specified type
         template<typename T>
@@ -256,5 +284,5 @@ friend bool operator==(const Type& lhs, const T& rhs) { return lhs.members() == 
 template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> &&  !tser::is_detected_v<tser::has_nequal_t, T>, int> = 0>\
 friend bool operator!=(const Type& lhs, const T& rhs) { return !(lhs == rhs); }\
 template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> &&  !tser::is_detected_v<tser::has_smaller_t, T>, int> = 0>\
-friend bool operator< (const Type& lhs, const T& rhs) { return lhs.members() < rhs.members(); }\
+friend bool operator< (const Type& lhs, const T& rhs) { return lhs.members() < rhs.members(); }
 

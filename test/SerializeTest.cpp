@@ -52,12 +52,12 @@ TEST(binaryArchive, readInts)
 {
     tser::BinaryArchive binaryArchive;
     binaryArchive.save(15);
-    binaryArchive.save(1);
-    binaryArchive.save(-15);
+    binaryArchive.save(256);
+    binaryArchive.save(-256);
     binaryArchive.reset();
     ASSERT_TRUE(binaryArchive.load<int>() == 15);
-    ASSERT_TRUE(binaryArchive.load<int>() == 1);
-    ASSERT_TRUE(binaryArchive.load<int>() == -15);
+    ASSERT_TRUE(binaryArchive.load<int>() == 256);
+    ASSERT_TRUE(binaryArchive.load<int>() == -256);
 }
 
 enum class SomeEnum { A, B, C };
@@ -66,7 +66,7 @@ TEST(binaryArchive, readPair)
     tser::BinaryArchive binaryArchive;
     auto somePair = std::pair(SomeEnum::A, std::string("A"));
     binaryArchive & somePair;
-    ASSERT_TRUE(binaryArchive.load<decltype(somePair)>() == somePair);
+    ASSERT_EQ(binaryArchive.load<decltype(somePair)>(), somePair);
 }
 
 TEST(binaryArchive, readTuple)
@@ -232,4 +232,28 @@ TEST(hashing, points)
     points.insert(Point{ 2,3 });
     //just a compile time check
     ASSERT_TRUE(true);
+}
+
+TEST(VLE, unsigned_encode_decode_up_to_513)
+{
+    std::string somebuffer(10, '\0');
+    for (size_t i = 0; i < 513; ++i)
+    {
+        tser::encodeVarInt(i, somebuffer.data());
+        size_t decoded;
+        tser::decodeVarInt(decoded, somebuffer.data());
+        ASSERT_EQ(i, decoded);
+    }
+}
+
+TEST(VLE, signed_encode_decode_up_513)
+{
+    std::string somebuffer(10, '\0');
+    for (int i = -256; i < 257; ++i)
+    {
+        tser::encodeVarInt(i, somebuffer.data());
+        int decoded;
+        tser::decodeVarInt(decoded, somebuffer.data());
+        ASSERT_EQ(i, decoded);
+    }
 }
