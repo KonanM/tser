@@ -108,17 +108,17 @@ struct Monster {
     Weapon equipped;
     std::vector<Vec3> path;
 };
-//see example2.cpp
+//SEE EXEMPLE2.cpp
 int main(){
     Monster randomMonster = createRandomMonster();
     std::cout << randomMonster;
-//will print something like
+//Will Print Something Like
 //Monster:{pos=Vec3:{x=-0.0304176, y=0.594657, z=-0.185052}, mana=64, hp=408, name=QF, 
 //inventory=[9, 8, 1, 2, 10, 6, 8, 10], 
 //color=Green, 
 //weapons=[Weapon:{name=MKHPC, damage=19086}, Weapon:{name=BQ, damage=24510}, Weapon:{name=VBRM, damage=24933}, Weapon:{name=EZSI, damage=7630}, Weapon:{name=ISKMAZRQMJ, damage=9684}, Weapon:{name=TUBA, damage=27054}, Weapon:{name=OS, damage=14409}], 
-//equipped=Weapon:{name=CEAJMS, damage=1203}, 
-//path=[Vec3:{x=0.766801, y=0.701376, z=-0.210043}, Vec3:{x=-0.56087, y=-0.841724, z=-0.714148}, Vec3:{x=0.640182, y=0.64889, z=-0.272207}]}
+//Equipped=Weapon:{name=CEAJMS, damage=1203}, 
+//Path=[Vec3:{x=0.766801, y=0.701376, z=-0.210043}, Vec3:{x=-0.56087, y=-0.841724, z=-0.714148}, Vec3:{x=0.640182, y=0.64889, z=-0.272207}]}
 
 }
 ```
