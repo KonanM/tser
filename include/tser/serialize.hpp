@@ -14,14 +14,14 @@ namespace tser
     size_t encodeVarInt(T value, char* output) {
         size_t i = 0;
         if constexpr (std::is_signed_v<T>)
-            value = value << 1 ^ (value >> (sizeof(T) * 8 - 1));
+            value = static_cast<T>(value << 1 ^ (value >> (sizeof(T) * 8 - 1)));
         for (; value > 127; ++i, value >>= 7)
-            output[i] = static_cast<uint8_t>(value & 127) | 128;
+            output[i] = static_cast<char>(static_cast<uint8_t>(value & 127) | 128);
         output[i++] = static_cast<uint8_t>(value) & 127;
         return i;
     }
     template<typename T>
-    size_t decodeVarInt(T& value, char* input) {
+    size_t decodeVarInt(T& value, const char* const input) {
         size_t i = 0;
         for (value = 0; i == 0 || (input[i - 1] & 128); i++)
             value |= static_cast<T>(input[i] & 127) << (7 * i);
@@ -92,6 +92,11 @@ namespace tser
             for (auto& val : container)
                 save(val);
         }
+        template<typename T, size_t N>
+        void save(const T(&carray)[N]) {
+            for (auto& val : carray)
+                save(val);
+        }
         //serialization for std::tuple and std::pair
         template<typename T, enable_for_tuple_t<T> = 0>
         void save(const T& tuple) {
@@ -116,19 +121,12 @@ namespace tser
         void save(const T& opt) {
             savePtrLike(opt);
         }
-        template<typename T, int N>
-        void save(T(&carray)[N])
-        {
-            for (auto& val : carray)
-                save(val);
-        }
         template<typename T, enable_for_pointer_t<T> = 0>
         void save(T&& ptr) {
             savePtrLike(ptr);
         }
         template<typename T>
-        void savePtrLike(T&& ptr)
-        {
+        void savePtrLike(T&& ptr){
             save(static_cast<bool>(ptr));
             if (ptr)
                 save(*ptr);
@@ -148,7 +146,7 @@ namespace tser
         void save(const T& t, const unsigned bytes = sizeof(T)) {
             if (m_bufferSize + bytes > m_bytes.size())
                 m_bytes.resize((m_bufferSize + bytes) * 2);
-            if constexpr (!std::is_floating_point_v<T> && !std::is_enum_v<T> && sizeof(T) > 2)
+            if constexpr (std::is_integral_v<T> && sizeof(T) > 2)
                 m_bufferSize += encodeVarInt(t, m_bytes.data() + m_bufferSize);
             else{
                 std::memcpy(m_bytes.data() + m_bufferSize, std::addressof(t), bytes);
@@ -165,7 +163,7 @@ namespace tser
         void load(TContainer<T>& container) {
             const auto size = load<decltype(container.size())>();
             container.clear();
-            for (int i = 0; i < size; ++i)
+            for (size_t i = 0; i < size; ++i)
                 container.insert(container.end(), load<T>());
         }
         //containers like std::array or other multi dim fixed size
@@ -184,7 +182,7 @@ namespace tser
         void load(TMap<TKey, TVal>& mapT) {
             mapT.clear();
             const auto size = load<decltype(mapT.size())>();
-            for (int i = 0; i < size; ++i) {
+            for (size_t i = 0; i < size; ++i) {
                 auto key = load<TKey>();
                 mapT[std::move(key)] = load<TVal>();
             }
@@ -206,8 +204,7 @@ namespace tser
             t = load<T>();
         }
         template<typename T, int N>
-        void load(T(&carray)[N])
-        {
+        void load(T(&carray)[N]){
             for (auto& val : carray)
                 load(val);
         }
@@ -224,7 +221,7 @@ namespace tser
         //everything that is trivially copyable we just memcpy into the types
         template<typename T, enable_for_memcpy_t<T> = 0>
         void load(T& t) {
-            if constexpr (!std::is_floating_point_v<T> && !std::is_enum_v <T> && sizeof(T) > 2)
+            if constexpr (std::is_integral_v<T> && sizeof(T) > 2)
                 m_readOffset += decodeVarInt(t, m_bytes.data() + m_readOffset);
             else{
                 std::memcpy(&t, m_bytes.data() + m_readOffset, sizeof(T));
@@ -265,24 +262,38 @@ namespace tser
         //current bit offset
         size_t m_bufferSize = 0, m_readOffset = 0;
     };
+}
 
-    constexpr size_t nArgs(std::string_view str) {
-        size_t nargs = 1; for (auto c : str) if (c == ',') ++nargs; return nargs;
+namespace details {
+    constexpr size_t n_args(const char* str) {
+        size_t nargs = 1;
+        for (char const* c = str; *c; ++c) if (*c == ',') ++nargs;
+        return nargs;
+    }
+    constexpr size_t str_size(const char* str) {
+        size_t strSize = 1;
+        for (char const* c = str; *c; ++c, ++strSize);
+        return strSize;
     }
 }
 
 //this macro defines printing, serialisation and comparision operators (==,!=,<) for custom types
 #define DEFINE_SERIALIZABLE(Type, ...) \
-constexpr inline decltype(auto) members() const { return std::tie(__VA_ARGS__); } \
-constexpr inline decltype(auto) members() { return std::tie(__VA_ARGS__); }  \
-static constexpr std::string_view _typeName = #Type;\
-static constexpr std::array<std::string_view, tser::nArgs(#__VA_ARGS__)> _memberNames = [](){ std::array<std::string_view, tser::nArgs(#__VA_ARGS__)> out{}; \
-size_t off = 0, next = 0; std::string_view ini(#__VA_ARGS__); \
-for(auto& strV : out){ next = ini.find_first_of(',', off); strV = ini.substr(off, next - off); off = next + 1;} return out;}();\
-template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> &&  !tser::is_detected_v<tser::has_equal_t, T>, int> = 0>\
-friend bool operator==(const Type& lhs, const T& rhs) { return lhs.members() == rhs.members(); }\
-template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> &&  !tser::is_detected_v<tser::has_nequal_t, T>, int> = 0>\
-friend bool operator!=(const Type& lhs, const T& rhs) { return !(lhs == rhs); }\
-template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> &&  !tser::is_detected_v<tser::has_smaller_t, T>, int> = 0>\
-friend bool operator< (const Type& lhs, const T& rhs) { return lhs.members() < rhs.members(); }
+inline decltype(auto) members() const { return std::tie(__VA_ARGS__); } \
+inline decltype(auto) members() { return std::tie(__VA_ARGS__); }  \
+static constexpr std::array<char, details::str_size(#__VA_ARGS__)> _memberNameData = [](){ \
+std::array<char, details::str_size(#__VA_ARGS__)> chars{}; size_t idx = 0; constexpr auto* ini(#__VA_ARGS__);  \
+for (char const* c = ini; *c; ++c, ++idx) if(*c != ',') chars[idx] = *c;  return chars;}(); \
+static constexpr const char* _typeName = #Type; \
+static constexpr std::array<const char*, details::n_args(#__VA_ARGS__)> _memberNames = \
+[](){ std::array<const char*, details::n_args(#__VA_ARGS__)> out{ {Type::_memberNameData.data()} }; \
+for(size_t i = 0, nArgs = 0; i < Type::_memberNameData.size() - 1; ++i) \
+if (Type::_memberNameData[i] == '\0'){++nArgs; out[nArgs] = &Type::_memberNameData[i] + 1;} \
+return out;}();\
+template<typename OT, std::enable_if_t<tser::is_detected_v<tser::has_members_t, OT> &&  !tser::is_detected_v<tser::has_equal_t, OT>, int> = 0>\
+friend bool operator==(const Type& lhs, const OT& rhs) { return lhs.members() == rhs.members(); }\
+template<typename OT, std::enable_if_t<tser::is_detected_v<tser::has_members_t, OT> &&  !tser::is_detected_v<tser::has_nequal_t, OT>, int> = 0>\
+friend bool operator!=(const Type& lhs, const OT& rhs) { return !(lhs == rhs); }\
+template<typename OT, std::enable_if_t<tser::is_detected_v<tser::has_members_t, OT> &&  !tser::is_detected_v<tser::has_smaller_t, OT>, int> = 0>\
+friend bool operator< (const Type& lhs, const OT& rhs) { return lhs.members() < rhs.members(); }
 

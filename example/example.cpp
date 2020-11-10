@@ -7,34 +7,33 @@
 enum class Item : char { NONE = 0, RADAR = 'R', TRAP = 'T', ORE = 'O' };
 namespace x
 {
-
-
-struct Point {
-    DEFINE_SERIALIZABLE(Point, x, y)
-    int x = 0, y = 0;
-};
+    struct Point {
+        DEFINE_SERIALIZABLE(Point,x,y)
+        int x = 0, y = 0;
+    };
 }
 struct Robot {
-    DEFINE_SERIALIZABLE(Robot, point, item)
+    DEFINE_SERIALIZABLE(Robot,point,item)
     x::Point point;
     std::optional<Item> item;
 };
 
-
 int main()
 {
-    
-    auto robot =Robot{ x::Point{3,4}, Item::RADAR };
-    std::cout << robot; // prints Robot:{point=Point:{x=3, y=4}, item={R}}
-    std::cout << Robot(); // prints Robot:{point=Point:{x=0, y=0}, item={null}}
-
+    auto robot = Robot{ x::Point{3,4}, Item::RADAR };
+    std::cout << robot   << '\n'; // prints Robot:{point=Point:{x=3, y=4}, item={R}}
+    std::cout << Robot() << '\n'; // prints Robot:{point=Point:{x=0, y=0}, item={null}}
     tser::BinaryArchive ba;
     ba.save(robot);
-    std::cout << ba; //prints AwAAAAQAAAABUg to the console via base64 encoding (base64 means only printable characters are used)
+    std::cout << ba; //prints BggBUg to the console via base64 encoding (base64 means only printable characters are used)
     //this way it's quickly possible to log entire objects to the console or logfiles
+
+    //due to varint encoding only 6 printable characters are needed, although the struct is 12 bytes in size
+    //e.g. a size_t in the range of 0-127 will only take 1 byte (before the base 64 encoding)
+
     tser::BinaryArchive ba2;
     //if we pass the BinaryArchive a string via operator << it will decode it and initialized it's internal buffer with it
-    ba2 << "AwAAAAQAAAABUg";
+    ba2 << "BggBUg";
     //so it's basically three lines of code to load an object into a test and start using it
     auto loadedRobot = ba2.load<Robot>();
     //all the comparision operator are implemented, so I could directly use std::set<Robot>

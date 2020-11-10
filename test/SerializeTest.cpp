@@ -101,7 +101,7 @@ TEST(binaryArchive, readCArray)
 {
     tser::BinaryArchive binaryArchive;
     int someInts[4] = { 1,2,3,4 };
-    binaryArchive& someInts;
+    binaryArchive & someInts;
     int loadedInts[4];
     binaryArchive.load(loadedInts);
     ASSERT_TRUE(std::equal(someInts, someInts + 4, loadedInts, loadedInts + 4));

@@ -20,12 +20,12 @@ namespace cpp_serializers_benchmark
     enum class Color : uint8_t { Red, Green, Blue };
 
     std::ostream& operator <<(std::ostream& os, const Color& c) {
-        return os << (c == Color::Blue ? "Blue" : c == Color::Green ? "Green" : "Red");
+        return os << "\"" << (c == Color::Blue ? "Blue" : c == Color::Green ? "Green" : "Red") << "\"";
     }
 
     using namespace::tser;
     struct Vec3 {
-        DEFINE_SERIALIZABLE(Vec3, x, y, z)
+        DEFINE_SERIALIZABLE(Vec3,x,y,z)
         float x, y, z;
         //the DEFINE_SERIALIZABLE detects custom comparision functions and will only provide the comparision operators
         //that aren't defined (!= is defined in terms of the equality operator !(lhs == rhs))
@@ -36,13 +36,13 @@ namespace cpp_serializers_benchmark
     };
 
     struct Weapon {
-        DEFINE_SERIALIZABLE(Weapon, name, damage)
+        DEFINE_SERIALIZABLE(Weapon,name,damage)
         std::string name;
         int16_t damage;
     };
 
     struct Monster {
-        DEFINE_SERIALIZABLE(Monster, pos, mana, hp, name, inventory, color, weapons, equipped, path)
+        DEFINE_SERIALIZABLE(Monster,pos,mana,hp,name,inventory,color,weapons,equipped,path)
         Vec3 pos;
         int16_t mana;
         int16_t hp;

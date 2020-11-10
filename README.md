@@ -16,7 +16,7 @@ I wanted a library that was small, but allowed me to avoid as much boilerplate a
 If you need a battle tested, non-intrusive and feature rich serialization libary, please have a look at [Boost](https://www.boost.org/doc/libs/1_72_0/libs/serialization/doc/index.html), [Cereal](https://uscilab.github.io/cereal/), [Bitsery](https://github.com/fraillt/bitsery), [Protobuf](https://developers.google.com/protocol-buffers), [Flatbuffers](https://google.github.io/flatbuffers/), [Yas](https://github.com/niXman/yas). They all provide a better feature set and better flexibility. Tser is meant to be tiny - copy one small header put a macro into a few places and be good to go. 
 
 ## Design goals
-* serialization of nearly all of the STL containers and types, as well as custom containers that follow STL conventions
+* serialization of nearly **all of the STL containers and types**, as well as custom containers that follow STL conventions
 * implement pretty printing to the console **automatically**, but allow for user defined implementations
 * implement comparision operators (equal, non-equal, smaller) **automatically**, but allow for user defined implementations
 * support printing the serialized representation of an object to the console via base64 encoding (this way only printable characters are used, allows for easily loading objects into the debugger via strings)
@@ -31,45 +31,48 @@ If you need a battle tested, non-intrusive and feature rich serialization libary
 * Supports ```std::array, std::vector, std::list, std::deque, std::string, std::unique_ptr, std::shared_ptr, std::optional, std::tuple, std::map, std::set, std::unordered_map, std::unordered_set, std::multiset, std::multimap, std::unordered_multimap, std::unordered_multiset ```
 * Supports serialization of user defined types that follow standard container/type conventions
 * Supports recursive parsing of types (e.g. containers/pointers of serializable types)
-* Supports pretty printing to the console
+* Supports pretty printing to the console **in json format**
 * Supports printing of the serialized representation via base64 encoding
+* Supports automatic compression of integers via variable int encoding (see also [protobuf encoding]((https://developers.google.com/protocol-buffers/docs/encoding)))
 
 ## Basic Example
 
-```Cpp
+```cpp
 #include <cassert>
 #include <optional>
 #include <tser/tser.hpp>
 
-enum class Item : char { NONE = 0, RADAR = 'R', TRAP = 'T', ORE = 'O' };
+enum class Item : char { RADAR = 'R', TRAP = 'T', ORE = 'O' };
 
 struct Point {
-    DEFINE_SERIALIZABLE(Point, x, y)
+    DEFINE_SERIALIZABLE(Point,x,y)
     int x = 0, y = 0;
 };
 
 struct Robot {
-    DEFINE_SERIALIZABLE(Robot, point, item)
+    DEFINE_SERIALIZABLE(Robot,point,item)
     Point point;
     std::optional<Item> item;
 };
 
 int main()
 {
-    auto robot = Robot{ Point{3,4}, Item::RADAR };
-    std::cout << robot; // prints Robot:{point=Point:{x=3, y=4}, item={R}}
-    std::cout << Robot(); // prints Robot:{point=Point:{x=0, y=0}, item={null}}
+    auto robot = Robot{ x::Point{3,4}, Item::RADAR };
+    std::cout << robot   << '\n'; // prints Robot:{point=Point:{x=3, y=4}, item={R}}
+    std::cout << Robot() << '\n'; // prints Robot:{point=Point:{x=0, y=0}, item={null}}
 
     tser::BinaryArchive ba;
     ba.save(robot);
-    std::cout << ba; //prints AwAAAAQAAAABUg to the console via base64 encoding (base64 means only printable characters are used)
+    std::cout << ba; //prints BggBUg to the console via base64 encoding (base64 means only printable characters are used)
     //this way it's quickly possible to log entire objects to the console or logfiles
+
     tser::BinaryArchive ba2;
     //if we pass the BinaryArchive a string via operator << it will decode it and initialized it's internal buffer with it
-    ba2 << "AwAAAAQAAAABUg";
+    ba2 << "BggBUg";
     //so it's basically three lines of code to load an object into a test and start using it
     auto loadedRobot = ba2.load<Robot>();
-    //the comparision operators ==,!=,< are implemented, so I could directly use std::set<Robot>
+    //all the comparision operator are implemented, so I could directly use std::set<Robot>
+
     bool areEqual = (robot == loadedRobot) && !(robot !=loadedRobot) && !(robot < loadedRobot);
     (void)areEqual;
     std::cout << loadedRobot; // prints Robot:{point=Point:{x=3, y=4}, item={R}}
@@ -80,24 +83,18 @@ Datastructures taken from [Cpp Serializer Benchmark](https://github.com/fraillt/
 
 ```cpp
 struct Vec3 {
-    DEFINE_SERIALIZABLE(Vec3, x, y, z)
+    DEFINE_SERIALIZABLE(Vec3,x,y,z)
     float x, y, z;
-    //the DEFINE_SERIALIZABLE detects custom comparision functions and will only provide the comparision operators
-    //that aren't defined (!= is defined in terms of the equality operator !(lhs == rhs))
-    friend bool operator==(const Vec3& lhs, const Vec3& rhs){
-        constexpr float eps = 1e-6f;
-        return abs(lhs.x - rhs.x) < eps && abs(lhs.y - rhs.y) < eps && abs(lhs.y - rhs.y) < eps;
-    }
 };
 
 struct Weapon {
-    DEFINE_SERIALIZABLE(Weapon, name, damage)
+    DEFINE_SERIALIZABLE(Weapon,name,damage)
     std::string name;
     int16_t damage;
 };
 
 struct Monster {
-    DEFINE_SERIALIZABLE(Monster, pos, mana, hp, name, inventory, color, weapons, equipped, path)
+    DEFINE_SERIALIZABLE(Monster,pos,mana,hp,name,inventory,color,weapons,equipped,path)
     Vec3 pos;
     int16_t mana;
     int16_t hp;
@@ -112,23 +109,71 @@ struct Monster {
 int main(){
     Monster randomMonster = createRandomMonster();
     std::cout << randomMonster;
-//Will Print Something Like
-//Monster:{pos=Vec3:{x=-0.0304176, y=0.594657, z=-0.185052}, mana=64, hp=408, name=QF, 
-//inventory=[9, 8, 1, 2, 10, 6, 8, 10], 
-//color=Green, 
-//weapons=[Weapon:{name=MKHPC, damage=19086}, Weapon:{name=BQ, damage=24510}, Weapon:{name=VBRM, damage=24933}, Weapon:{name=EZSI, damage=7630}, Weapon:{name=ISKMAZRQMJ, damage=9684}, Weapon:{name=TUBA, damage=27054}, Weapon:{name=OS, damage=14409}], 
-//Equipped=Weapon:{name=CEAJMS, damage=1203}, 
-//Path=[Vec3:{x=0.766801, y=0.701376, z=-0.210043}, Vec3:{x=-0.56087, y=-0.841724, z=-0.714148}, Vec3:{x=0.640182, y=0.64889, z=-0.272207}]}
-
 }
+```
+The output will be in json format (which can be [prettyfied](https://jsonformatter.curiousconcept.com/)) and looks like this:
+```yaml
+{ "Monster": {"pos" : { "Vec3": {"x" : -0.763506, "y" : 0.293835, "z" : -0.840006}
+}, "mana" : 378, "hp" : 857, "name" : "YIOEAM", "inventory" :
+[8, 4, 1, 7, 1, 7, 5, 3, 3, 3]
+, "color" : "Blue", "weapons" :
+[  { "Weapon": {"name" : "TZJ", "damage" : 11753}
+}, { "Weapon": {"name" : "VWX", "damage" : 16449}
+}]
+, "equipped" : { "Weapon": {"name" : "LYIJWP", "damage" : 8503}
+}, "path" :
+[  { "Vec3": {"x" : 0.1284, "y" : -0.233815, "z" : -0.253437}
+}, { "Vec3": {"x" : 0.827373, "y" : -0.0843914, "z" : 0.452065}
+}, { "Vec3": {"x" : -0.791171, "y" : 0.530956, "z" : -0.381805}
+}]
+}}
+```
+
+## Varibale int encoding example
+
+Integers are compressed via variable int encoding. The basic idea is to indicate (in the highest bit of a byte) if there are following bytes. The first seven bytes are then used to store the lowest bits of the number.
+This way unsigned numbers from 0-127 only take 1 byte to store. Signed integers use zig-zag encoding so the range [-64,63] is encoded in one byte.
+```cpp
+int main()
+{
+    static constexpr size_t N = 5;
+    size_t grid5x5[N][N]{};
+    //fill the grid with some numbers
+    for (size_t i = 0; i < N; ++i) {
+        for (size_t j = 0; j < N; ++j) {
+            grid5x5[i][j] = i * N + j;
+        }
+    }
+    tser::BinaryArchive ba;
+    ba.save(grid5x5);
+    std::cout << ba; 
+    //with compression (35 chars): AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGA
+    //wihtout compression (268 chars): 
+    //AAAAAAAAAAABAAAAAAAAAAIAAAAAAAAAAwAAAAAAAAAEAAAAAAAAAAUAAAAAAAAABgAAAAAAAAAHAAAAAAAAAAg
+    //AAAAAAAAACQAAAAAAAAAKAAAAAAAAAAsAAAAAAAAADAAAAAAAAAANAAAAAAAAAA4AAAAAAAAADwAAAAAAAAAQAA
+    //AAAAAAABEAAAAAAAAAEgAAAAAAAAATAAAAAAAAABQAAAAAAAAAFQAAAAAAAAAWAAAAAAAAABcAAAAAAAAAGAAAAAAAAAA
+}
+```
+
+## Custom comparision functions example
+The ```DEFINE_SERIALIZABLE``` macro detects custom comparision functions and will only implement the (```==,!=,<```) comprisions functions that aren't defined (```!=``` is defined in terms of the equality operator ```!(lhs == rhs)```)
+```cpp
+struct Vec3 {
+    DEFINE_SERIALIZABLE(Vec3,x,y,z)
+    float x, y, z;
+    friend bool operator==(const Vec3& lhs, const Vec3& rhs){
+        static constexpr float eps = 1e-6f;
+        return abs(lhs.x - rhs.x) < eps && abs(lhs.y - rhs.y) < eps && abs(lhs.y - rhs.y) < eps;
+    }
+};
 ```
 
 ## How do pointers bevave for serialization?
 **tldr:** pointers behave like std::optional. When they are not nullptr the pointed to object is serialized.
-```Cpp
+```cpp
 struct PointerWrapper
 {
-    DEFINE_SERIALIZABLE(PointerWrapper, intPtr, unique, shared)
+    DEFINE_SERIALIZABLE(PointerWrapper,intPtr,unique,shared)
     ~PointerWrapper(){delete intPtr};
     int* intPtr = nullptr;
     std::unique_ptr<Point> unique;
@@ -154,7 +199,7 @@ Internally the macro exposes a tuple of the members and the name of the members.
 ```cpp
 struct Point {
     int x = 0, y = 0;
-    //DEFINE_SERIALIZABLE(Point, x, y) expands to:
+    //DEFINE_SERIALIZABLE(Point,x,y) expands to:
     constexpr inline decltype(auto) members() const { return std::tie(x, y); }
     constexpr inline decltype(auto) members()       { return std::tie(x, y); }
     static constexpr std::string_view _typeName{"Point"};

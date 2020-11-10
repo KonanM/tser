@@ -12,16 +12,17 @@ namespace std
     template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> && !tser::is_detected_v<tser::has_outstream_op_t, T>, int> = 0>
     std::ostream& operator<<(std::ostream& os, const T& t) {
         int i = -1, last = static_cast<int>(T::_memberNames.size()) - 1;
-        os << T::_typeName << ":{";
-        return std::apply([&](auto&& ... memberVal) -> decltype(auto) {return ((++i, os << T::_memberNames[static_cast<unsigned>(i)] << "=" << memberVal << (i == last ? "}" : ",")), ...); }, t.members());
+        auto pVal = [&](auto&& val) -> decltype(auto){ if constexpr (std::is_constructible_v<std::string, decltype(val)>) return ((os << "\"" << val), "\""); else return val;  };
+        auto pMem = [&](auto&& ... memberVal) -> std::ostream& {return ((++i, os << '\"' << T::_memberNames[static_cast<unsigned>(i)] << "\" : " << pVal(memberVal) << (i == last ? "}\n" : ", ")), ...); };
+        return (os << "{ \"" << T::_typeName << "\": {", std::apply(pMem, t.members())) << "}";
     }
     //overload for all containers that don't implement std::ostream& <<
     template<typename T, typename = std::enable_if_t<tser::is_container_v<T> && !tser::is_detected_v<tser::has_outstream_op_t, T>>>
     std::ostream& operator <<(std::ostream& os, const T& container) {
-        os << "[";
+        os << "\n[ ";
         size_t i = 0;
         for (auto& elem : container)
-            os << elem << ((++i) != container.size() ? ", " : "]\n");
+            os << elem << ((++i) != container.size() ? "," : "]\n");
         return os;
     }
     //print support for enums
