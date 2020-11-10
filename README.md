@@ -2,7 +2,7 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/ggjg8clbh6ytklvv?svg=true)](https://ci.appveyor.com/project/KinanMahdi/tser)
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/KonanM/tser/blob/master/LICENSE)
 [![Try online](https://img.shields.io/badge/try-online-blue.svg)](https://wandbox.org/permlink/gdgbD3t8i8hOWK6L)
-[![Try online](https://img.shields.io/badge/try-online-blue.svg)](https://godbolt.org/z/ksVSDY)
+[![Try online](https://img.shields.io/badge/try-online-blue.svg)](https://godbolt.org/z/9Y53Yj)
 [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/konanM/tser.svg)](http://isitmaintained.com/project/konanM/tser "Average time to resolve an issue")
 [![Percentage of issues still open](http://isitmaintained.com/badge/open/konanM/tser.svg)](http://isitmaintained.com/project/konanM/tser "Percentage of issues still open")
 ## Why another C++ serialization library?
@@ -35,7 +35,7 @@ If you need a battle tested, non-intrusive and feature rich serialization libary
 * Supports printing of the serialized representation via base64 encoding
 * Supports automatic compression of integers via variable int encoding (see also [protobuf encoding]((https://developers.google.com/protocol-buffers/docs/encoding)))
 
-## Basic Example
+## Basic Example [![Try online](https://img.shields.io/badge/try-online-blue.svg)](https://godbolt.org/z/9Y53Yj)
 
 ```cpp
 #include <cassert>
@@ -57,28 +57,26 @@ struct Robot {
 
 int main()
 {
-    auto robot = Robot{ x::Point{3,4}, Item::RADAR };
-    std::cout << robot   << '\n'; // prints Robot:{point=Point:{x=3, y=4}, item={R}}
-    std::cout << Robot() << '\n'; // prints Robot:{point=Point:{x=0, y=0}, item={null}}
+    auto robot = Robot{ Point{3,4}, Item::RADAR };
+    std::cout << robot; // prints Robot:{point=Point:{x=3, y=4}, item={R}}
+    std::cout << Robot(); // prints Robot:{point=Point:{x=0, y=0}, item={null}}
 
     tser::BinaryArchive ba;
     ba.save(robot);
     std::cout << ba; //prints BggBUg to the console via base64 encoding (base64 means only printable characters are used)
     //this way it's quickly possible to log entire objects to the console or logfiles
-
     tser::BinaryArchive ba2;
     //if we pass the BinaryArchive a string via operator << it will decode it and initialized it's internal buffer with it
     ba2 << "BggBUg";
     //so it's basically three lines of code to load an object into a test and start using it
     auto loadedRobot = ba2.load<Robot>();
     //all the comparision operator are implemented, so I could directly use std::set<Robot>
-
     bool areEqual = (robot == loadedRobot) && !(robot !=loadedRobot) && !(robot < loadedRobot);
     (void)areEqual;
     std::cout << loadedRobot; // prints Robot:{point=Point:{x=3, y=4}, item={R}}
 }
 ```
-## Pretty printing example
+## Pretty printing example [![Try online](https://img.shields.io/badge/try-online-blue.svg)](https://godbolt.org/z/K4qehT)
 Datastructures taken from [Cpp Serializer Benchmark](https://github.com/fraillt/cpp_serializers_benchmark/blob/master/testing_core/types.cpp)
 
 ```cpp
@@ -155,6 +153,28 @@ int main()
 }
 ```
 
+## Custom load and save example
+You can implement a custom load and save function for your type (e.g. memcpy everything) and you don't even need the ```DEFINE_SERIALIZABLE``` macro for it to work with the binary archive.
+```cpp
+struct CustomPointNoMacro {
+    void save(tser::BinaryArchive& ba) const {
+        ba.save(x + y);
+    }
+    void load(tser::BinaryArchive& ba) {
+        x = ba.load<int>();
+    }
+    int x = 1, y = 2;
+};
+
+int main
+{
+    tser::BinaryArchive ba;
+    ba.save(CustomPointNoMacro{ 5,6 });
+    auto loadedPoint = ba.load<CustomPointNoMacro>();
+    assert(loadedPoint.x == 11);//x was assigned 5+6 in the save method
+    assert(loadedPoint.y == 2); //y was default intialized to 2
+}
+
 ## Custom comparision functions example
 The ```DEFINE_SERIALIZABLE``` macro detects custom comparision functions and will only implement the (```==,!=,<```) comprisions functions that aren't defined (```!=``` is defined in terms of the equality operator ```!(lhs == rhs)```)
 ```cpp
@@ -163,7 +183,7 @@ struct Vec3 {
     float x, y, z;
     friend bool operator==(const Vec3& lhs, const Vec3& rhs){
         static constexpr float eps = 1e-6f;
-        return abs(lhs.x - rhs.x) < eps && abs(lhs.y - rhs.y) < eps && abs(lhs.y - rhs.y) < eps;
+        return std::abs(lhs.x - rhs.x) < eps && std::abs(lhs.y - rhs.y) < eps && std::abs(lhs.y - rhs.y) < eps;
     }
 };
 ```

@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 #include <cassert>
 #include <vector>
-#include <tser/serialize.hpp>
+#include <tser/print.hpp>
+#include <algorithm>
 #include <string_view>
 #include <type_traits>
 #include <cassert>
@@ -23,7 +24,6 @@ namespace cpp_serializers_benchmark
         return os << "\"" << (c == Color::Blue ? "Blue" : c == Color::Green ? "Green" : "Red") << "\"";
     }
 
-    using namespace::tser;
     struct Vec3 {
         DEFINE_SERIALIZABLE(Vec3,x,y,z)
         float x, y, z;
@@ -31,7 +31,7 @@ namespace cpp_serializers_benchmark
         //that aren't defined (!= is defined in terms of the equality operator !(lhs == rhs))
         friend bool operator==(const Vec3& lhs, const Vec3& rhs){
             constexpr float eps = 1e-6f;
-            return abs(lhs.x - rhs.x) < eps && abs(lhs.y - rhs.y) < eps && abs(lhs.y - rhs.y) < eps;
+            return std::abs(lhs.x - rhs.x) < eps && std::abs(lhs.y - rhs.y) < eps && std::abs(lhs.y - rhs.y) < eps;
         }
     };
 
@@ -105,21 +105,19 @@ namespace cpp_serializers_benchmark
         return res;
     }
 }
-#include <vector>
-#include <tser/compare.hpp>
-#include <tser/print.hpp>
-#include <algorithm>
+
 int main()
 {
     tser::BinaryArchive ba;
-    auto allTheMonsters = cpp_serializers_benchmark::createMonsters(20);
-    ba & allTheMonsters;
+    std::vector<cpp_serializers_benchmark::Monster> allTheMonsters = cpp_serializers_benchmark::createMonsters(5);
+    ba.save(allTheMonsters);
     for (auto& m : allTheMonsters)
     {
         std::cout << m << "\n";
     }
-
+    ba.reset();
     auto allTheLoadedMonsters =  ba.load<std::vector<cpp_serializers_benchmark::Monster>>();
-    assert(allTheMonsters == allTheLoadedMonsters);
+    bool areEqual = std::equal(allTheLoadedMonsters.begin(), allTheLoadedMonsters.end(), allTheMonsters.begin(), allTheMonsters.end()));
+    (void)areEqual;
 }
 

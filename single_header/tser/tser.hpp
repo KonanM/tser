@@ -149,7 +149,7 @@ namespace tser
         void save(const T& t, const unsigned bytes = sizeof(T)) {
             if (m_bufferSize + bytes > m_bytes.size())
                 m_bytes.resize((m_bufferSize + bytes) * 2);
-            if constexpr (std::is_integral_v<T> && sizeof(T) > 1)
+            if constexpr (std::is_integral_v<T> && sizeof(T) > 2)
                 m_bufferSize += encodeVarInt(t, m_bytes.data() + m_bufferSize);
             else{
                 std::memcpy(m_bytes.data() + m_bufferSize, std::addressof(t), bytes);
@@ -224,7 +224,7 @@ namespace tser
         //everything that is trivially copyable we just memcpy into the types
         template<typename T, enable_for_memcpy_t<T> = 0>
         void load(T& t) {
-            if constexpr (std::is_integral_v<T> && sizeof(T) > 1)
+            if constexpr (std::is_integral_v<T> && sizeof(T) > 2)
                 m_readOffset += decodeVarInt(t, m_bytes.data() + m_readOffset);
             else{
                 std::memcpy(&t, m_bytes.data() + m_readOffset, sizeof(T));
