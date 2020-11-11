@@ -117,7 +117,7 @@ int main()
     }
     ba.reset();
     auto allTheLoadedMonsters =  ba.load<std::vector<cpp_serializers_benchmark::Monster>>();
-    bool areEqual = std::equal(allTheLoadedMonsters.begin(), allTheLoadedMonsters.end(), allTheMonsters.begin(), allTheMonsters.end()));
+    bool areEqual = std::equal(allTheLoadedMonsters.begin(), allTheLoadedMonsters.end(), allTheMonsters.begin(), allTheMonsters.end());
     (void)areEqual;
 }
 
