@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSL-1.0
 #pragma once
 #include <array>
+#include <iosfwd>
 #include <string>
 #include <string_view>
 #include <type_traits>
