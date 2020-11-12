@@ -206,9 +206,9 @@ TEST(binaryArchive, complexType)
     c.ints.push_back('4');
     c.opt = std::make_optional(Point{ 7,8 });
     binaryArchive & c;
-    auto str = tser::base64_encode(binaryArchive.get_buffer());
+    auto str = tser::encode_base64(binaryArchive.get_buffer());
     tser::BinaryArchive readStream;
-    readStream.initialize(tser::base64_decode(str));
+    readStream.initialize(tser::decode_base64(str));
     std::cout << c;
     ComplexType c2;
     c2.ints.clear();

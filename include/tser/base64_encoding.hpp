@@ -6,7 +6,7 @@ namespace tser {
     //tables for the base64 conversions
     static constexpr auto g_encodingTable = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     static constexpr auto g_decodingTable = []() { std::array<char, 256> decTable{}; for (char i = 0; i < 64; ++i) decTable[static_cast<unsigned>(g_encodingTable[static_cast<size_t>(i)])] = i; return decTable; }();
-    static std::string base64_encode(std::string_view in) {
+    static std::string encode_base64(std::string_view in) {
         std::string out;
         int val = 0, valb = -6;
         for (char c : in) {
@@ -20,7 +20,7 @@ namespace tser {
         if (valb > -6) out.push_back(g_encodingTable[((val << 8) >> (valb + 8)) & 0x3F]);
         return out;
     }
-    static std::string base64_decode(std::string_view in) {
+    static std::string decode_base64(std::string_view in) {
         std::string out;
         int val = 0, valb = -8;
         for (char c : in) {

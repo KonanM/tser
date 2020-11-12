@@ -37,8 +37,8 @@ namespace tser {
 
 
 namespace tser{
-    static std::string base64_encode(std::string_view in);
-    static std::string base64_decode(std::string_view in);
+    static std::string encode_base64(std::string_view in);
+    static std::string decode_base64(std::string_view in);
     //implementation details for is_detected
     namespace detail {
         struct ns {
@@ -84,7 +84,7 @@ namespace tser{
         size_t m_bufferSize = 0, m_readOffset = 0;
     public:
         explicit BinaryArchive(const size_t initialSize = 1024) : m_bytes(initialSize, '\0') {}
-        explicit BinaryArchive(std::string initialStr) : m_bytes(base64_encode(initialStr)), m_bufferSize(m_bytes.size()){}
+        explicit BinaryArchive(std::string initialStr) : m_bytes(encode_base64(initialStr)), m_bufferSize(m_bytes.size()){}
 
         template<class T> using has_custom_save_t = decltype(std::declval<T>().save(std::declval<BinaryArchive&>()));
         template<class T> using enable_for_container_t = std::enable_if_t<is_container_v<T> && !is_trivial_v<T>, int>;
@@ -274,7 +274,7 @@ namespace tser{
             return std::string_view(m_bytes.data(), m_bufferSize);
         }
         friend std::ostream& operator<<(std::ostream& os, const tser::BinaryArchive& ba) {
-            os << base64_encode(ba.get_buffer()) << '\n';
+            os << encode_base64(ba.get_buffer()) << '\n';
             return os;
         }
     };
@@ -362,7 +362,7 @@ namespace tser {
     //tables for the base64 conversions
     static constexpr auto g_encodingTable = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     static constexpr auto g_decodingTable = []() { std::array<char, 256> decTable{}; for (char i = 0; i < 64; ++i) decTable[static_cast<unsigned>(g_encodingTable[static_cast<size_t>(i)])] = i; return decTable; }();
-    static std::string base64_encode(std::string_view in) {
+    static std::string encode_base64(std::string_view in) {
         std::string out;
         int val = 0, valb = -6;
         for (char c : in) {
@@ -376,7 +376,7 @@ namespace tser {
         if (valb > -6) out.push_back(g_encodingTable[((val << 8) >> (valb + 8)) & 0x3F]);
         return out;
     }
-    static std::string base64_decode(std::string_view in) {
+    static std::string decode_base64(std::string_view in) {
         std::string out;
         int val = 0, valb = -8;
         for (char c : in) {
