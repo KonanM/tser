@@ -84,7 +84,7 @@ namespace tser{
         size_t m_bufferSize = 0, m_readOffset = 0;
     public:
         explicit BinaryArchive(const size_t initialSize = 1024) : m_bytes(initialSize, '\0') {}
-        explicit BinaryArchive(std::string initialStr) : m_bytes(encode_base64(initialStr)), m_bufferSize(m_bytes.size()){}
+        explicit BinaryArchive(std::string encodedStr) : m_bytes(decode_base64(encodedStr)), m_bufferSize(m_bytes.size()){}
 
         template<class T> using has_custom_save_t = decltype(std::declval<T>().save(std::declval<BinaryArchive&>()));
         template<class T> using enable_for_container_t = std::enable_if_t<is_container_v<T> && !is_trivial_v<T>, int>;
@@ -273,11 +273,11 @@ namespace tser{
         std::string_view get_buffer() const {
             return std::string_view(m_bytes.data(), m_bufferSize);
         }
-        friend std::ostream& operator<<(std::ostream& os, const tser::BinaryArchive& ba) {
-            os << encode_base64(ba.get_buffer()) << '\n';
-            return os;
-        }
     };
+    std::ostream& operator<<(std::ostream& os, const BinaryArchive& ba) {
+        os << encode_base64(ba.get_buffer()) << '\n';
+        return os;
+    }
 }
 //this macro defines printing, serialisation and comparision operators (==,!=,<) for custom types
 #define DEFINE_SERIALIZABLE(Type, ...) \
