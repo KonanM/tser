@@ -5,7 +5,8 @@
 // SPDX-License-Identifier: BSL-1.0
 
 #include <array>
-#include <iosfwd>
+#include <cstring>
+#include <iostream>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -341,7 +342,6 @@ namespace tser {
 
 // #include "stdext.hpp"
 // #include "serialize.hpp"
-#include <iostream>
 namespace std {
     constexpr inline auto printVal = [](std::ostream& os, auto&& val) -> auto&& { 
         if constexpr (std::is_constructible_v<std::string, decltype(val)> || std::is_same_v<std::decay_t<decltype(val)>, char>)
