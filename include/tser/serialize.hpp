@@ -245,11 +245,11 @@ namespace tser{
         std::string_view get_buffer() const {
             return std::string_view(m_bytes.data(), m_bufferSize);
         }
+        friend std::ostream& operator<<(std::ostream& os, const BinaryArchive& ba) {
+            return os << encode_base64(ba.get_buffer()) << '\n';
+        }
     };
-    std::ostream& operator<<(std::ostream& os, const BinaryArchive& ba) {
-        os << encode_base64(ba.get_buffer()) << '\n';
-        return os;
-    }
+
 }
 //this macro defines printing, serialisation and comparision operators (==,!=,<) for custom types
 #define DEFINE_SERIALIZABLE(Type, ...) \
