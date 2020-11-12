@@ -191,6 +191,7 @@ int main
     assert(loadedPoint.x == 11);//x was assigned 5+6 in the save method
     assert(loadedPoint.y == 2); //y was default intialized to 2
 }
+```
 
 ## Custom comparision functions example
 The ```DEFINE_SERIALIZABLE``` macro detects custom comparision functions and will only implement the (```==,!=,<```) comprisions functions that aren't defined (```!=``` is defined in terms of the equality operator ```!(lhs == rhs)```)
