@@ -57,29 +57,25 @@ struct Robot {
 
 int main()
 {
-    auto robot = Robot{ Point{3,4}, Item::RADAR };
-    std::cout << robot; // prints Robot:{point=Point:{x=3, y=4}, item={R}}
-    std::cout << Robot(); // prints Robot:{point=Point:{x=0, y=0}, item={null}}
-
+    auto robot = Robot{ x::Point{3,4}, Item::RADAR };
+    std::cout << robot << '\n'; // prints { "Robot": {"point" : { "Point": {"x" : 3, "y" : 4}}, "item" : R}}
+    std::cout << Robot() << '\n'; // prints { "Robot": {"point" : { "Point": {"x" : 3, "y" : 4}}, "item" : {null}}}
     tser::BinaryArchive ba;
     ba.save(robot);
     std::cout << ba; //prints BggBUg to the console via base64 encoding (base64 means only printable characters are used)
     //this way it's quickly possible to log entire objects to the console or logfiles
-    tser::BinaryArchive ba2;
-    //if we pass the BinaryArchive a string via operator << it will decode it and initialized it's internal buffer with it
-    ba2 << "BggBUg";
-    //so it's basically three lines of code to load an object into a test and start using it
-    auto loadedRobot = ba2.load<Robot>();
-    //all the comparision operator are implemented, so I could directly use std::set<Robot>
-    bool areEqual = (robot == loadedRobot) && !(robot !=loadedRobot) && !(robot < loadedRobot);
-    (void)areEqual;
-    std::cout << loadedRobot; // prints Robot:{point=Point:{x=3, y=4}, item={R}}
+
+    //due to varint encoding only 6 printable characters are needed, although the struct is 12 bytes in size
+    //e.g. a size_t in the range of 0-127 will only take 1 byte (before the base 64 encoding)
 }
 ```
 
 ## Test example
-You can construct BinaryArchive from a base64 encoded string, which will be decoded automatically.
+You can construct BinaryArchive from a base64 encoded string (which will be decoded automatically).
 So it's basically one or two lines of code to load a complex object into a test and start using it.
+
+
+Feel free to grab the [base_encoding.hpp](https://github.com/KonanM/tser/blob/master/include/tser/base64_encoding.hpp) header to use it as standalone header in your projects.
 
 ```cpp
 void test()
@@ -150,6 +146,9 @@ The output will be in json format (which can be [prettyfied](https://jsonformatt
 
 Integers are compressed via variable int encoding. The basic idea is to indicate (in the highest bit of a byte) if there are following bytes. The first seven bytes are then used to store the lowest bits of the number.
 This way unsigned numbers from 0-127 only take 1 byte to store. Signed integers use zig-zag encoding so the range [-64,63] is encoded in one byte.
+
+
+Feel free to grab the [varint_encoding.hpp](https://github.com/KonanM/tser/blob/master/include/tser/varint_encoding.hpp) header to use it as standalone header in your projects.
 ```cpp
 int main()
 {

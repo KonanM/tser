@@ -357,7 +357,6 @@ namespace std {
 // #include "base64_encoding.hpp"// Licensed under the Boost License <https://opensource.org/licenses/BSL-1.0>.
 // SPDX-License-Identifier: BSL-1.0
 
-// #include "serialize.hpp"
 namespace tser {
     //tables for the base64 conversions
     static constexpr auto g_encodingTable = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
