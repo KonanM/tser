@@ -1,16 +1,16 @@
-// Licensed under the MIT License <http://opensource.org/licenses/MIT>.
-// SPDX-License-Identifier: MIT
+// Licensed under the Boost License <https://opensource.org/licenses/BSL-1.0>.
+// SPDX-License-Identifier: BSL-1.0
 #pragma once
-// #include "serialize.hpp"// Licensed under the MIT License <http://opensource.org/licenses/MIT>.
-// SPDX-License-Identifier: MIT
+// #include "serialize.hpp"// Licensed under the Boost License <https://opensource.org/licenses/BSL-1.0>.
+// SPDX-License-Identifier: BSL-1.0
 
 #include <array>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <tuple>
-// #include "tser/varint_encoding.hpp"// Licensed under the MIT License <http://opensource.org/licenses/MIT>.
-// SPDX-License-Identifier: MIT
+// #include "tser/varint_encoding.hpp"// Licensed under the Boost License <https://opensource.org/licenses/BSL-1.0>.
+// SPDX-License-Identifier: BSL-1.0
 
 #include <type_traits>
 namespace tser {
@@ -354,8 +354,8 @@ namespace std {
     }
 }
 
-// #include "base64_encoding.hpp"// Licensed under the MIT License <http://opensource.org/licenses/MIT>.
-// SPDX-License-Identifier: MIT
+// #include "base64_encoding.hpp"// Licensed under the Boost License <https://opensource.org/licenses/BSL-1.0>.
+// SPDX-License-Identifier: BSL-1.0
 
 // #include "serialize.hpp"
 namespace tser {

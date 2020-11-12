@@ -269,4 +269,4 @@ See also https://godbolt.org/z/ksVSDY
 * Clang >= 9.0
 * Gcc >= 7.3
 
-## Licensed under the [MIT License](LICENSE)
+## Licensed under the [Boost License](LICENSE)

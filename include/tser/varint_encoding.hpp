@@ -1,5 +1,5 @@
-// Licensed under the MIT License <http://opensource.org/licenses/MIT>.
-// SPDX-License-Identifier: MIT
+// Licensed under the Boost License <https://opensource.org/licenses/BSL-1.0>.
+// SPDX-License-Identifier: BSL-1.0
 #pragma once
 #include <type_traits>
 namespace tser {

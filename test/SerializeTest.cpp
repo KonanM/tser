@@ -1,3 +1,5 @@
+// Licensed under the Boost License <https://opensource.org/licenses/BSL-1.0>.
+// SPDX-License-Identifier: BSL-1.0
 #include "gtest/gtest.h"
 #include "tser/tser.hpp"
 
