@@ -21,8 +21,8 @@ struct Robot {
 int main()
 {
     auto robot = Robot{ x::Point{3,4}, Item::RADAR };
-    std::cout << robot   << '\n'; // prints Robot:{point=Point:{x=3, y=4}, item={R}}
-    std::cout << Robot() << '\n'; // prints Robot:{point=Point:{x=0, y=0}, item={null}}
+    std::cout << robot << '\n'; // prints { "Robot": {"point" : { "Point": {"x" : 3, "y" : 4}}, "item" : R}}
+    std::cout << Robot() << '\n'; // prints { "Robot": {"point" : { "Point": {"x" : 3, "y" : 4}}, "item" : {null}}}
     tser::BinaryArchive ba;
     ba.save(robot);
     std::cout << ba; //prints BggBUg to the console via base64 encoding (base64 means only printable characters are used)
@@ -30,16 +30,18 @@ int main()
 
     //due to varint encoding only 6 printable characters are needed, although the struct is 12 bytes in size
     //e.g. a size_t in the range of 0-127 will only take 1 byte (before the base 64 encoding)
-
-    tser::BinaryArchive ba2;
-    //if we pass the BinaryArchive a string via operator << it will decode it and initialized it's internal buffer with it
-    ba2 << "BggBUg";
-    //so it's basically three lines of code to load an object into a test and start using it
-    auto loadedRobot = ba2.load<Robot>();
-    //all the comparision operator are implemented, so I could directly use std::set<Robot>
-
-    bool areEqual = (robot == loadedRobot) && !(robot !=loadedRobot) && !(robot < loadedRobot);
-    (void)areEqual;
-    std::cout << loadedRobot; // prints Robot:{point=Point:{x=3, y=4}, item={R}}
 }
 
+void test()
+{
+    //if we construct BinaryArchive with a string it will decode it and initialized it's internal buffer with it
+    //so it's basically one or two lines of code to load a complex object into a test and start using it
+    tser::BinaryArchive ba2("BggBUg");
+    auto loadedRobot = ba2.load<Robot>();
+
+    auto robot = Robot{ x::Point{3,4}, Item::RADAR };
+    //all the comparision operators are implemented, so I could directly use std::set<Robot>
+    bool areEqual = (robot == loadedRobot) && !(robot != loadedRobot) && !(robot < loadedRobot);
+    (void)areEqual;
+    std::cout << loadedRobot; //prints{ "Robot": {"point" : { "Point": {"x" : 3, "y" : 4}}, "item" : R} }
+}

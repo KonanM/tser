@@ -1,12 +1,11 @@
+// Licensed under the MIT License <http://opensource.org/licenses/MIT>.
+// SPDX-License-Identifier: MIT
 #pragma once
 #include "serialize.hpp"
-
-namespace tser
-{
+namespace tser {
     //tables for the base64 conversions
     static constexpr auto g_encodingTable = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    static constexpr auto g_decodingTable = []() { std::array<char, 256> decodingTable{}; for (char i = 0; i < 64; ++i) decodingTable[static_cast<unsigned>(g_encodingTable[static_cast<size_t>(i)])] = i; return decodingTable; }();
-
+    static constexpr auto g_decodingTable = []() { std::array<char, 256> decTable{}; for (char i = 0; i < 64; ++i) decTable[static_cast<unsigned>(g_encodingTable[static_cast<size_t>(i)])] = i; return decTable; }();
     static std::string base64_encode(std::string_view in) {
         std::string out;
         int val = 0, valb = -6;
@@ -21,7 +20,6 @@ namespace tser
         if (valb > -6) out.push_back(g_encodingTable[((val << 8) >> (valb + 8)) & 0x3F]);
         return out;
     }
-
     static std::string base64_decode(std::string_view in) {
         std::string out;
         int val = 0, valb = -8;
@@ -34,16 +32,5 @@ namespace tser
             }
         }
         return out;
-    }
-    //here we define the operators to print to the console and converts that result back into the binary archive
-    std::ostream& operator<<(std::ostream& os, const tser::BinaryArchive& ba){
-        //we have to encode to a printable character set only, that's why we use base64
-        os << base64_encode(ba.getString()) << '\n';
-        return os;
-    }
-    
-    tser::BinaryArchive& operator<<(tser::BinaryArchive& ba, std::string encoded){
-        ba.initialize(base64_decode(encoded));
-        return ba;
     }
 }

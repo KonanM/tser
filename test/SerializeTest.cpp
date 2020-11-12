@@ -1,9 +1,5 @@
 #include "gtest/gtest.h"
-
-#include "tser/base64encoding.hpp"
-#include "tser/serialize.hpp"
-#include "tser/compare.hpp"
-#include "tser/print.hpp"
+#include "tser/tser.hpp"
 
 #include <unordered_map>
 #include <unordered_set>
@@ -28,12 +24,10 @@ namespace std { \
             size_t operator()(const Type& t) const { \
                 tser::BinaryArchive bs; \
                 bs & t; \
-                return std::hash<std::string_view>()(bs.getString()); \
+                return std::hash<std::string_view>()(bs.get_buffer()); \
         } \
     }; \
 }
-
-
 
 TEST(binaryArchive, readBits)
 {
@@ -212,7 +206,7 @@ TEST(binaryArchive, complexType)
     c.ints.push_back('4');
     c.opt = std::make_optional(Point{ 7,8 });
     binaryArchive & c;
-    auto str = tser::base64_encode(binaryArchive.getString());
+    auto str = tser::base64_encode(binaryArchive.get_buffer());
     tser::BinaryArchive readStream;
     readStream.initialize(tser::base64_decode(str));
     std::cout << c;
@@ -239,9 +233,9 @@ TEST(VLE, unsigned_encode_decode_up_to_513)
     std::string somebuffer(10, '\0');
     for (size_t i = 0; i < 513; ++i)
     {
-        tser::encodeVarInt(i, somebuffer.data());
+        tser::encode_varint(i, somebuffer.data());
         size_t decoded;
-        tser::decodeVarInt(decoded, somebuffer.data());
+        tser::decode_varint(decoded, somebuffer.data());
         ASSERT_EQ(i, decoded);
     }
 }
@@ -251,9 +245,9 @@ TEST(VLE, signed_encode_decode_up_513)
     std::string somebuffer(10, '\0');
     for (int i = -256; i < 257; ++i)
     {
-        tser::encodeVarInt(i, somebuffer.data());
+        tser::encode_varint(i, somebuffer.data());
         int decoded;
-        tser::decodeVarInt(decoded, somebuffer.data());
+        tser::decode_varint(decoded, somebuffer.data());
         ASSERT_EQ(i, decoded);
     }
 }

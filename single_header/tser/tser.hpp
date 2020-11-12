@@ -5,16 +5,17 @@
 // SPDX-License-Identifier: MIT
 
 #include <array>
-#include <cstring>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <tuple>
+// #include "tser/varint_encoding.hpp"// Licensed under the MIT License <http://opensource.org/licenses/MIT>.
+// SPDX-License-Identifier: MIT
 
-namespace tser
-{
+#include <type_traits>
+namespace tser {
     template<typename T>
-    size_t encodeVarInt(T value, char* output) {
+    size_t encode_varint(T value, char* output) {
         size_t i = 0;
         if constexpr (std::is_signed_v<T>)
             value = static_cast<T>(value << 1 ^ (value >> (sizeof(T) * 8 - 1)));
@@ -24,7 +25,7 @@ namespace tser
         return i;
     }
     template<typename T>
-    size_t decodeVarInt(T& value, const char* const input) {
+    size_t decode_varint(T& value, const char* const input) {
         size_t i = 0;
         for (value = 0; i == 0 || (input[i - 1] & 128); i++)
             value |= static_cast<T>(input[i] & 127) << (7 * i);
@@ -32,6 +33,12 @@ namespace tser
             value = (value & 1) ? -static_cast<T>((value + 1) >> 1) : (value + 1) >> 1;
         return i;
     }
+}
+
+
+namespace tser{
+    static std::string base64_encode(std::string_view in);
+    static std::string base64_decode(std::string_view in);
     //implementation details for is_detected
     namespace detail {
         struct ns {
@@ -48,8 +55,13 @@ namespace tser
             using value_t = std::true_type;
             using type = Op<Args...>;
         };
-    } // namespace detail
-
+        constexpr size_t n_args(char const* c, size_t nargs = 1) {
+            for (; *c; ++c) if (*c == ',') ++nargs; return nargs;
+        }
+        constexpr size_t str_size(char const* c, size_t strSize = 1) {
+            for (; *c; ++c) ++strSize; return strSize;
+        }
+    }
     // we need a bunch of template metaprogramming for being able to differentiate between different types 
     template <template<class...> class Op, class... Args>
     constexpr bool is_detected_v = detail::detector<detail::ns, void, Op, Args...>::value_t::value;
@@ -68,7 +80,12 @@ namespace tser
     template<class T> constexpr bool is_pointer_v = std::is_pointer_v<T> || tser::is_detected_v<has_element_t, T>;
 
     class BinaryArchive {
+        std::string m_bytes = std::string(1024, '\0');
+        size_t m_bufferSize = 0, m_readOffset = 0;
     public:
+        explicit BinaryArchive(const size_t initialSize = 1024) : m_bytes(initialSize, '\0') {}
+        explicit BinaryArchive(std::string initialStr) : m_bytes(base64_encode(initialStr)), m_bufferSize(m_bytes.size()){}
+
         template<class T> using has_custom_save_t = decltype(std::declval<T>().save(std::declval<BinaryArchive&>()));
         template<class T> using enable_for_container_t = std::enable_if_t<is_container_v<T> && !is_trivial_v<T>, int>;
         template<class T> using enable_for_array_t = std::enable_if_t<is_container_v<T>, int>;
@@ -80,8 +97,6 @@ namespace tser
         template<class T> using enable_for_tuple_t = std::enable_if_t<is_detected_v<has_tuple_t, T> && !is_trivial_v<T>, int>;
         template<class T> using enable_for_custom_t = std::enable_if_t<is_detected_v<has_custom_save_t, T>, int>;
         template<class T> using enable_for_memcpy_t = std::enable_if_t<is_trivial_v<T> && !std::is_pointer_v<T> && !is_detected_v<has_members_t, T> && !is_detected_v<has_optional_t, T> && !is_detected_v<has_custom_save_t, T>, int>;
-
-        explicit BinaryArchive(const size_t initialSize = 1024) : m_bytes(initialSize, '\0') {}
         //serialization for vector like and set like containers
         template <template <typename...> class TContainer, typename T, enable_for_container_t<TContainer<T>> = 0>
         void save(const TContainer<T>& container) {
@@ -150,7 +165,7 @@ namespace tser
             if (m_bufferSize + bytes > m_bytes.size())
                 m_bytes.resize((m_bufferSize + bytes) * 2);
             if constexpr (std::is_integral_v<T> && sizeof(T) > 2)
-                m_bufferSize += encodeVarInt(t, m_bytes.data() + m_bufferSize);
+                m_bufferSize += encode_varint(t, m_bytes.data() + m_bufferSize);
             else{
                 std::memcpy(m_bytes.data() + m_bufferSize, std::addressof(t), bytes);
                 m_bufferSize += bytes;
@@ -225,7 +240,7 @@ namespace tser
         template<typename T, enable_for_memcpy_t<T> = 0>
         void load(T& t) {
             if constexpr (std::is_integral_v<T> && sizeof(T) > 2)
-                m_readOffset += decodeVarInt(t, m_bytes.data() + m_readOffset);
+                m_readOffset += decode_varint(t, m_bytes.data() + m_readOffset);
             else{
                 std::memcpy(&t, m_bytes.data() + m_readOffset, sizeof(T));
                 m_readOffset += sizeof(T);
@@ -251,45 +266,29 @@ namespace tser
             m_readOffset = 0;
         }
         void initialize(std::string_view str) {
-            if (str.size() > m_bytes.size())
-                m_bytes.resize(str.size() + 1);
             m_bytes = str;
             m_bufferSize = str.size();
             m_readOffset = 0;
         }
-        std::string_view getString() const {
+        std::string_view get_buffer() const {
             return std::string_view(m_bytes.data(), m_bufferSize);
         }
-    private:
-        std::string m_bytes = std::string(1024, '\0');
-        //current bit offset
-        size_t m_bufferSize = 0, m_readOffset = 0;
+        friend std::ostream& operator<<(std::ostream& os, const tser::BinaryArchive& ba) {
+            os << base64_encode(ba.get_buffer()) << '\n';
+            return os;
+        }
     };
 }
-
-namespace details {
-    constexpr size_t n_args(const char* str) {
-        size_t nargs = 1;
-        for (char const* c = str; *c; ++c) if (*c == ',') ++nargs;
-        return nargs;
-    }
-    constexpr size_t str_size(const char* str) {
-        size_t strSize = 1;
-        for (char const* c = str; *c; ++c, ++strSize);
-        return strSize;
-    }
-}
-
 //this macro defines printing, serialisation and comparision operators (==,!=,<) for custom types
 #define DEFINE_SERIALIZABLE(Type, ...) \
 inline decltype(auto) members() const { return std::tie(__VA_ARGS__); } \
 inline decltype(auto) members() { return std::tie(__VA_ARGS__); }  \
-static constexpr std::array<char, details::str_size(#__VA_ARGS__)> _memberNameData = [](){ \
-std::array<char, details::str_size(#__VA_ARGS__)> chars{}; size_t idx = 0; constexpr auto* ini(#__VA_ARGS__);  \
+static constexpr std::array<char, tser::detail::str_size(#__VA_ARGS__)> _memberNameData = [](){ \
+std::array<char, tser::detail::str_size(#__VA_ARGS__)> chars{}; size_t idx = 0; constexpr auto* ini(#__VA_ARGS__);  \
 for (char const* c = ini; *c; ++c, ++idx) if(*c != ',') chars[idx] = *c;  return chars;}(); \
 static constexpr const char* _typeName = #Type; \
-static constexpr std::array<const char*, details::n_args(#__VA_ARGS__)> _memberNames = \
-[](){ std::array<const char*, details::n_args(#__VA_ARGS__)> out{ {Type::_memberNameData.data()} }; \
+static constexpr std::array<const char*, tser::detail::n_args(#__VA_ARGS__)> _memberNames = \
+[](){ std::array<const char*, tser::detail::n_args(#__VA_ARGS__)> out{ {Type::_memberNameData.data()} }; \
 for(size_t i = 0, nArgs = 0; i < Type::_memberNameData.size() - 1; ++i) \
 if (Type::_memberNameData[i] == '\0'){++nArgs; out[nArgs] = &Type::_memberNameData[i] + 1;} \
 return out;}();\
@@ -300,12 +299,46 @@ friend bool operator!=(const Type& lhs, const OT& rhs) { return !(lhs == rhs); }
 template<typename OT, std::enable_if_t<tser::is_detected_v<tser::has_members_t, OT> &&  !tser::is_detected_v<tser::has_smaller_t, OT>, int> = 0>\
 friend bool operator< (const Type& lhs, const OT& rhs) { return lhs.members() < rhs.members(); }
 
-
-// #include "compare.hpp"
+// #include "stdext.hpp"
 // #include "serialize.hpp"
-
-//implement comparision operators for serializable classes that don't implement the operators themselves
+#include <iostream>
 namespace std {
+    constexpr inline auto printVal = [](std::ostream& os, auto&& val) -> auto&& { 
+        if constexpr (std::is_constructible_v<std::string, decltype(val)> || std::is_same_v<std::decay_t<decltype(val)>, char>)
+            return ((os << "\"" << val), "\""); else
+        return val;
+    };
+    //overload for pair, which is needed to print maps (and pairs)
+    template<typename X, typename Y>
+    std::ostream& operator <<(std::ostream& os, const std::pair<X, Y>& p) {
+        return os << "{ \"key\": " << printVal(os, p.first) << ", \"value\": " << printVal(os, p.second) << "}";
+    }
+    //overload for classes that implement the tser macro
+    template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> && !tser::is_detected_v<tser::has_outstream_op_t, T>, int> = 0>
+    std::ostream& operator<<(std::ostream& os, const T& t) {
+        int i = -1, last = static_cast<int>(T::_memberNames.size()) - 1;
+        auto pMem = [&](auto&& ... memberVal) -> std::ostream& {return ((++i, os << '\"' << T::_memberNames[static_cast<unsigned>(i)] << "\" : " << printVal(os, memberVal) << (i == last ? "}\n" : ", ")), ...); };
+        return (os << "{ \"" << T::_typeName << "\": {", std::apply(pMem, t.members())) << "}";
+    }
+    //overload for all containers that don't implement std::ostream& <<
+    template<typename T, typename = std::enable_if_t<tser::is_container_v<T> && !tser::is_detected_v<tser::has_outstream_op_t, T>>>
+    std::ostream& operator <<(std::ostream& os, const T& container) {
+        os << "\n[ ";
+        size_t i = 0;
+        for (auto& elem : container)
+            os << printVal(os, elem) << ((++i) != container.size() ? "," : "]\n");
+        return os;
+    }
+    //print support for enums
+    template<typename T, std::enable_if_t<std::is_enum_v<T> && !tser::is_detected_v<tser::has_outstream_op_t, T>, int> = 0>
+    std::ostream& operator <<(std::ostream& os, const T& t) {
+        return os << printVal(os, static_cast<std::underlying_type_t<T>>(t));
+    }
+    //support for optional like types
+    template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_optional_t, T> && !tser::is_detected_v<tser::has_element_t, T> && !tser::is_detected_v<tser::has_outstream_op_t, T>, int> = 0>
+    std::ostream& operator <<(std::ostream& os, const T& t) {
+        return os << (t ? (os << (printVal(os, *t)), "") : "\"null\"");
+    }
     //overload for all containers that are not < comparable already (e.g. std::unordered_map)
     template<typename T, typename = std::enable_if_t<tser::is_container_v<T> && !tser::is_detected_v<tser::has_smaller_t, T>>>
     inline bool operator <(const T& lhs, const T& rhs) {
@@ -321,55 +354,14 @@ namespace std {
     }
 }
 
-// #include "print.hpp"
-// #include "serialize.hpp"
-#include <iostream>
-namespace std
-{
-    //overload for pair, which is needed to print maps (and pairs)
-    template<typename X, typename Y>
-    std::ostream& operator <<(std::ostream& os, const std::pair<X, Y>& p) {
-        return os << '{' << p.first << ',' << p.second << '}';
-    }
-    //overload for classes that implement the tser macro
-    template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_members_t, T> && !tser::is_detected_v<tser::has_outstream_op_t, T>, int> = 0>
-    std::ostream& operator<<(std::ostream& os, const T& t) {
-        int i = -1, last = static_cast<int>(T::_memberNames.size()) - 1;
-        auto pVal = [&](auto&& val) -> decltype(auto){ if constexpr (std::is_constructible_v<std::string, decltype(val)>) return ((os << "\"" << val), "\""); else return val;  };
-        auto pMem = [&](auto&& ... memberVal) -> std::ostream& {return ((++i, os << '\"' << T::_memberNames[static_cast<unsigned>(i)] << "\" : " << pVal(memberVal) << (i == last ? "}\n" : ", ")), ...); };
-        return (os << "{ \"" << T::_typeName << "\": {", std::apply(pMem, t.members())) << "}";
-    }
-    //overload for all containers that don't implement std::ostream& <<
-    template<typename T, typename = std::enable_if_t<tser::is_container_v<T> && !tser::is_detected_v<tser::has_outstream_op_t, T>>>
-    std::ostream& operator <<(std::ostream& os, const T& container) {
-        os << "\n[ ";
-        size_t i = 0;
-        for (auto& elem : container)
-            os << elem << ((++i) != container.size() ? "," : "]\n");
-        return os;
-    }
-    //print support for enums
-    template<typename T, std::enable_if_t<std::is_enum_v<T> && !tser::is_detected_v<tser::has_outstream_op_t, T>, int> = 0>
-    std::ostream& operator <<(std::ostream& os, const T& t) {
-        return os << static_cast<std::underlying_type_t<T>>(t);
-    }
-    //support for optional like types
-    template<typename T, std::enable_if_t<tser::is_detected_v<tser::has_optional_t, T> && !tser::is_detected_v<tser::has_element_t, T> && !tser::is_detected_v<tser::has_outstream_op_t, T>, int> = 0>
-    std::ostream& operator <<(std::ostream& os, const T& t) {
-        if (t) return os << '{' << *t << '}';
-        else   return os << '{' << "null" << '}';
-    }
-}
+// #include "base64_encoding.hpp"// Licensed under the MIT License <http://opensource.org/licenses/MIT>.
+// SPDX-License-Identifier: MIT
 
-// #include "base64encoding.hpp"
 // #include "serialize.hpp"
-
-namespace tser
-{
+namespace tser {
     //tables for the base64 conversions
     static constexpr auto g_encodingTable = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    static constexpr auto g_decodingTable = []() { std::array<char, 256> decodingTable{}; for (char i = 0; i < 64; ++i) decodingTable[static_cast<unsigned>(g_encodingTable[static_cast<size_t>(i)])] = i; return decodingTable; }();
-
+    static constexpr auto g_decodingTable = []() { std::array<char, 256> decTable{}; for (char i = 0; i < 64; ++i) decTable[static_cast<unsigned>(g_encodingTable[static_cast<size_t>(i)])] = i; return decTable; }();
     static std::string base64_encode(std::string_view in) {
         std::string out;
         int val = 0, valb = -6;
@@ -384,7 +376,6 @@ namespace tser
         if (valb > -6) out.push_back(g_encodingTable[((val << 8) >> (valb + 8)) & 0x3F]);
         return out;
     }
-
     static std::string base64_decode(std::string_view in) {
         std::string out;
         int val = 0, valb = -8;
@@ -397,17 +388,6 @@ namespace tser
             }
         }
         return out;
-    }
-    //here we define the operators to print to the console and converts that result back into the binary archive
-    std::ostream& operator<<(std::ostream& os, const tser::BinaryArchive& ba){
-        //we have to encode to a printable character set only, that's why we use base64
-        os << base64_encode(ba.getString()) << '\n';
-        return os;
-    }
-    
-    tser::BinaryArchive& operator<<(tser::BinaryArchive& ba, std::string encoded){
-        ba.initialize(base64_decode(encoded));
-        return ba;
     }
 }
 

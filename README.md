@@ -24,7 +24,7 @@ If you need a battle tested, non-intrusive and feature rich serialization libary
 
 ## Features
 
-* C++17 header only and single header (~ 350 LOC)
+* C++17 header only and single header (400 LOC, 350 LOC without comments - 17Kb)
 * Header only version is split so that an even more minimal subset of the libary can be used
 * Cross compiler (supports gcc, clang, msvc) and warning free (W4, Wall, Wextra)
 * Dependency-free
@@ -76,6 +76,25 @@ int main()
     std::cout << loadedRobot; // prints Robot:{point=Point:{x=3, y=4}, item={R}}
 }
 ```
+
+## Test example
+You can construct BinaryArchive from a base64 encoded string, which will be decoded automatically.
+So it's basically one or two lines of code to load a complex object into a test and start using it.
+
+```cpp
+void test()
+{
+    tser::BinaryArchive ba2("BggBUg");
+    auto loadedRobot = ba2.load<Robot>();
+
+    auto robot = Robot{ x::Point{3,4}, Item::RADAR };
+    //all the comparision operators are implemented, so I could directly use std::set<Robot>
+    bool areEqual = (robot == loadedRobot) && !(robot != loadedRobot) && !(robot < loadedRobot);
+    (void)areEqual;
+    std::cout << loadedRobot; //prints{ "Robot": {"point" : { "Point": {"x" : 3, "y" : 4}}, "item" : R} }
+}
+```
+
 ## Pretty printing example [![Try online](https://img.shields.io/badge/try-online-blue.svg)](https://godbolt.org/z/K4qehT)
 Datastructures taken from [Cpp Serializer Benchmark](https://github.com/fraillt/cpp_serializers_benchmark/blob/master/testing_core/types.cpp)
 
@@ -237,11 +256,12 @@ If you really just want to use tser for single file rapid prototyping it's also 
 
 ## Limitations
 * Only supports default constructible types
-* Is intrusive and uses a macro to be able to reflect over members of a given type
+* Is intrusive and uses a single macro to be able to reflect over members of a given type
 * No safety checks, no versioning, types need the same binary layout on a different platforms
 * No support for ```std::variant``` (unless trivially copyable)
 * No support for ```std::stack, std::priority_queue, std::string_view```
 * Needs a recent compiler (constexpr std::string_view)
+* The pretty printing actually puts overloads for ```std::ostream &operator <<``` in namespace std, I know that's technically UB, so don't include the stdext.hpp header if that is (understandibly) unaceptable for you
 
 ## Compiler support
 See also https://godbolt.org/z/ksVSDY

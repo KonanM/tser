@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 #include <cassert>
 #include <vector>
-#include <tser/print.hpp>
 #include <algorithm>
 #include <string_view>
 #include <type_traits>
@@ -10,8 +9,7 @@
 #include <random>
 #include <functional>
 #include <iostream>
-
-
+#include <tser/tser.hpp>
 
 //MIT License
 //Copyright (c) 2017 Mindaugas Vinkelis
@@ -120,4 +118,3 @@ int main()
     bool areEqual = std::equal(allTheLoadedMonsters.begin(), allTheLoadedMonsters.end(), allTheMonsters.begin(), allTheMonsters.end());
     (void)areEqual;
 }
-
