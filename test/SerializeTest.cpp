@@ -61,7 +61,7 @@ TEST(binaryArchive, readPair)
 {
     tser::BinaryArchive binaryArchive;
     auto somePair = std::pair(SomeEnum::A, std::string("A"));
-    binaryArchive & somePair;
+    binaryArchive.save(somePair);
     ASSERT_EQ(binaryArchive.load<decltype(somePair)>(), somePair);
 }
 
@@ -252,4 +252,13 @@ TEST(VLE, signed_encode_decode_up_513)
         tser::decode_varint(decoded, somebuffer.data());
         ASSERT_EQ(i, decoded);
     }
+}
+
+
+TEST(fixed_size, array_carray)
+{
+    static_assert(tser::detail::is_array<std::array<int, 5>>::value);
+    constexpr int num[5]{};
+    static_assert(tser::detail::is_array<decltype(num)>::value);
+    static_assert(!tser::detail::is_array<std::vector<int>>::value);
 }
