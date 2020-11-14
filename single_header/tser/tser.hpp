@@ -118,7 +118,7 @@ namespace tser{
     template<class T> using has_element_t = typename T::element_type;
     template<class T> using has_mapped_t = typename T::mapped_type;
     template<class T> using has_custom_save_t = decltype(std::declval<T>().save(std::declval<BinaryArchive&>()));
-    template<class T> using has_free_save_t = decltype(save(std::declval<T&>(), std::declval<BinaryArchive&>()));
+    template<class T> using has_free_save_t = decltype(tser::save(std::declval<T&>(), std::declval<BinaryArchive&>()));
     template<class T> constexpr bool is_container_v = is_detected_v<has_begin_t, T>;
     template<class T> constexpr bool is_tuple_v = is_detected_v<has_tuple_t, T>;
     template<class T> constexpr bool is_tser_t_v = is_detected_v<has_members_t, T>;
@@ -189,8 +189,8 @@ namespace tser{
         template<typename T>
         void save(const T& t){
             if constexpr (is_detected_v<has_free_save_t, T>)
-                save(*this, t);
-            if constexpr (is_detected_v<has_custom_save_t, T>)
+                tser::save(t, *this);
+            else if constexpr (is_detected_v<has_custom_save_t, T>)
                 t.save(*this);
             else if constexpr(is_tser_t_v<T>)
                 std::apply([&](auto&& ... mVal) { (save(mVal), ...); }, t.members());
@@ -223,7 +223,7 @@ namespace tser{
         void load(T& t) {
             using V = std::decay_t<T>;
             if constexpr (is_detected_v<has_free_save_t, T>)
-                load(*this, t);
+                tser::load(t, *this);
             else if constexpr (is_detected_v<has_custom_save_t, T>)
                 t.load(*this);
             else if constexpr (is_tser_t_v<T>)

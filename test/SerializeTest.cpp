@@ -144,6 +144,27 @@ TEST(binaryArchive, customSerializationNoMacro)
     ASSERT_EQ(loadedPoint.x, 11);
     ASSERT_EQ(loadedPoint.y, 2);
 }
+
+struct ThirdPartyStruct {
+    int x = 1, y = 2;
+};
+namespace tser {
+    void save(const ThirdPartyStruct& t, tser::BinaryArchive& ba) {
+        ba.save(t.x + t.y);
+    }
+    void load(ThirdPartyStruct& t, tser::BinaryArchive& ba) {
+        t.x = ba.load<int>();
+    }
+}
+
+TEST(binaryArchive, customSerializationFreeFunction)
+{
+    tser::BinaryArchive ba;
+    ba.save(ThirdPartyStruct{ 5,6 });
+    auto loadedPoint = ba.load<ThirdPartyStruct>();
+    ASSERT_EQ(loadedPoint.x, 11);
+    ASSERT_EQ(loadedPoint.y, 2);
+}
 struct Point
 {
     DEFINE_SERIALIZABLE(Point, x, y)

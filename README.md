@@ -182,6 +182,15 @@ struct CustomPointNoMacro {
     }
     int x = 1, y = 2;
 };
+//alternatively you can also use a non intrusive version
+namespace tser {
+    void save(const CustomPointNoMacro& t, tser::BinaryArchive& ba) {
+        ba.save(t.x + t.y);
+    }
+    void load(CustomPointNoMacro& t, tser::BinaryArchive& ba) {
+        t.x = ba.load<int>();
+    }
+}
 
 int main
 {
