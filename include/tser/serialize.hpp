@@ -56,10 +56,7 @@ namespace tser{
     template<class T> using has_element_t = typename T::element_type;
     template<class T> using has_mapped_t = typename T::mapped_type;
     template<class T> using has_custom_save_t = decltype(std::declval<T>().save(std::declval<BinaryArchive&>()));
-
-    template<class T> constexpr bool is_custom_saveable_v = is_detected_v<has_custom_save_t, T>;
     template<class T> constexpr bool is_container_v = is_detected_v<has_begin_t, T>;
-    template<class T> constexpr bool is_trivial_v = std::is_trivially_copyable_v<T>;
     template<class T> constexpr bool is_tuple_v = is_detected_v<has_tuple_t, T>;
     template<class T> constexpr bool is_tser_t_v = is_detected_v<has_members_t, T>;
     template<class T> constexpr bool is_pointer_like_v = std::is_pointer_v<T> || tser::is_detected_v<has_element_t, T> || tser::is_detected_v<has_optional_t, T>;
@@ -128,7 +125,7 @@ namespace tser{
 
         template<typename T>
         void save(const T& t){
-            if constexpr (is_custom_saveable_v<T>)
+            if constexpr (is_detected_v<has_custom_save_t, T>)
                 t.save(*this);
             else if constexpr(is_tser_t_v<T>)
                 std::apply([&](auto&& ... mVal) { (save(mVal), ...); }, t.members());
@@ -160,7 +157,7 @@ namespace tser{
         template<typename T>
         void load(T& t) {
             using V = std::decay_t<T>;
-            if constexpr (is_custom_saveable_v<T>)
+            if constexpr (is_detected_v<has_custom_save_t, T>)
                 t.load(*this);
             else if constexpr (is_tser_t_v<T>)
                 std::apply([&](auto&& ... mVal) { (load(mVal), ...); }, t.members());

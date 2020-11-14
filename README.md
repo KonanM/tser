@@ -6,7 +6,7 @@
 [![Percentage of issues still open](http://isitmaintained.com/badge/open/konanM/tser.svg)](http://isitmaintained.com/project/konanM/tser "Percentage of issues still open")
 ## Why another C++ serialization library?
 
-I searched for a small C++ serialization library (<20 KB) for some competitive programming contest and didn't find anything that suited my needs. 
+I searched for a small C++ serialization library (<16 KB) for some competitive programming contest and didn't find anything that suited my needs. 
 
 I wanted a library that was small, but allowed me to avoid as much boilerplate as possible. Especially if you are quickly prototyping you want to avoid implementing serialization, printing and comparision operators manually.
 
@@ -19,16 +19,16 @@ If you need a battle tested, non-intrusive and feature rich serialization libary
 * implement pretty printing to the console **automatically**, but allow for user defined implementations
 * implement comparision operators (equal, non-equal, smaller) **automatically**, but allow for user defined implementations
 * support printing the serialized representation of an object to the console via base64 encoding (this way only printable characters are used, allows for easily loading objects into the debugger via strings)
-* use minimal set of includes (```array, string, string_view, tuple, type_traits, iostream```) and only ~ 350 lines of code (including 50 lines of comments)
+* use minimal set of includes (```array, string, string_view, tuple, type_traits, iostream```) and only ~ 320 lines of code
 
 ## Features
 
-* C++17 header only and single header (400 LOC, 350 LOC without comments - 17Kb)
-* Header only version is split so that an even more minimal subset of the libary can be used
+* C++17 header only and single header (320 LOC, 292 LOC without comments - 13Kb)
 * Cross compiler (supports gcc, clang, msvc) and warning free (W4, Wall, Wextra)
 * Dependency-free
+* Boost-License so feel free to do whatever you want with the code
 * Supports ```std::array, std::vector, std::list, std::deque, std::string, std::unique_ptr, std::shared_ptr, std::optional, std::tuple, std::map, std::set, std::unordered_map, std::unordered_set, std::multiset, std::multimap, std::unordered_multimap, std::unordered_multiset ```
-* Supports serialization of user defined types that follow standard container/type conventions
+* Supports serialization of user defined types / containers
 * Supports recursive parsing of types (e.g. containers/pointers of serializable types)
 * Supports pretty printing to the console **in json format**
 * Supports printing of the serialized representation via base64 encoding
@@ -256,11 +256,10 @@ If you really just want to use tser for single file rapid prototyping it's also 
 ## Limitations
 * Only supports default constructible types
 * Is intrusive and uses a single macro to be able to reflect over members of a given type
-* No safety checks, no versioning, types need the same binary layout on a different platforms
+* No safety checks, no versioning, types need the same binary layout on different platforms
 * No support for ```std::variant``` (unless trivially copyable)
 * No support for ```std::stack, std::priority_queue, std::string_view```
 * Needs a recent compiler (constexpr std::string_view)
-* The pretty printing actually puts overloads for ```std::ostream &operator <<``` in namespace std, I know that's technically UB, so don't include the stdext.hpp header if that is (understandibly) unaceptable for you
 
 ## Compiler support
 See also https://godbolt.org/z/ksVSDY
