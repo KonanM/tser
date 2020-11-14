@@ -161,7 +161,6 @@ namespace tser{
         template<typename T>
         void load(T& t) {
             using V = std::decay_t<T>;
-
             if constexpr (is_custom_saveable_v<T>)
                 t.load(*this);
             else if constexpr (is_tser_t_v<T>)
@@ -204,7 +203,6 @@ namespace tser{
                 }
             }
         }
-
         template<typename T>
         T load() {
             T t{}; load(t); return t;
@@ -212,10 +210,6 @@ namespace tser{
         template<typename T>
         friend BinaryArchive& operator&(BinaryArchive& ba, const T& t) {
             ba.save(t); return ba;
-        }
-        template<typename T>
-        friend BinaryArchive& operator&(BinaryArchive& ba, T& t) {
-            ba.load(t); return ba;
         }
         void reset() {
             m_bufferSize = 0;

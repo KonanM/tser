@@ -241,10 +241,6 @@ namespace tser{
         friend BinaryArchive& operator&(BinaryArchive& ba, const T& t) {
             ba.save(t); return ba;
         }
-        template<typename T>
-        friend BinaryArchive& operator&(BinaryArchive& ba, T& t) {
-            ba.load(t); return ba;
-        }
         void reset() {
             m_bufferSize = 0;
             m_readOffset = 0;
