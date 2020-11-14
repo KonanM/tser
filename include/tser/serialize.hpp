@@ -87,7 +87,7 @@ namespace tser{
         }
         else if constexpr (tser::is_tser_t_v<T>) {
             auto pMem = [&](auto&& ... memberVal) { size_t i = 0; 
-            ((os << (i != 0 ?  ", " : "") << '\"' << V::_memberNames[i++] << "\" : " << tser::print(os, memberVal)), ...); };
+            (((os << (i != 0 ?  ", " : "") << '\"'), os << V::_memberNames[i++] << "\" : " << tser::print(os, memberVal)), ...); };
             os << "{ \"" << V::_typeName << "\": {"; std::apply(pMem, val.members()); os << "}}\n";
         }
         else
@@ -100,7 +100,7 @@ namespace tser{
     template< class T, std::size_t... I>
     constexpr inline bool less(const T& lhs, const T& rhs, std::index_sequence<I...>) {
         bool isSmaller = false;
-        ((less(std::get<I>(lhs) , std::get<I>(rhs)) ? (isSmaller = true, false) : (less(std::get<I>(rhs), std::get<I>(lhs)) ? false : true)) &&...);
+        (void)((less(std::get<I>(lhs) , std::get<I>(rhs)) ? (static_cast<void>(isSmaller = true), false) : (less(std::get<I>(rhs), std::get<I>(lhs)) ? false : true)) &&...);
         return isSmaller;
     }
     template<typename T>
@@ -173,7 +173,7 @@ namespace tser{
                     t = load<bool>() ? (t = new std::remove_pointer_t<T>(), load(*t), t) : nullptr;
                 }
                 else if constexpr (is_detected_v<has_optional_t, T>)
-                    t = load<bool>() ? T(load<V::value_type>()) : T();
+                    t = load<bool>() ? T(load<typename V::value_type>()) : T();
                 else //smart pointer
                     t = T(load<has_element_t<V>*>());
             }
@@ -182,8 +182,8 @@ namespace tser{
                     const auto size = load<decltype(t.size())>();
                     for (size_t i = 0; i < size; ++i) {
                         if constexpr (is_detected_v<has_mapped_t, V>) {
-                            auto key = load<V::key_type>();//has to be on two lines otherwise order is not deterministic
-                            t.emplace(std::move(key), load<V::mapped_type>());
+                            auto key = load<typename V::key_type>();//has to be on two lines otherwise order is not deterministic
+                            t.emplace(std::move(key), load<typename V::mapped_type>());
                         }
                         else {
                             t.insert(t.end(), load<std::decay_t<has_begin_t<T>>>());
