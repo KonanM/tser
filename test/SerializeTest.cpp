@@ -11,7 +11,7 @@
 namespace tser::detail {
     template <class Tuple, std::size_t... I>
     bool compareTuples(const Tuple& lh, const Tuple& rh, std::index_sequence<I...>) {
-        auto compareEQ = [](const auto& lhs, const auto& rhs) { if constexpr (!tser::is_pointer_v<std::remove_reference_t<decltype(lhs)>>) { return lhs == rhs; }
+        auto compareEQ = [](const auto& lhs, const auto& rhs) { if constexpr (!tser::is_pointer_like_v<std::remove_reference_t<decltype(lhs)>>) { return lhs == rhs; }
         else { if (lhs && rhs) { return *lhs == *rhs; } else if (!lhs && !rhs) { return true; } return false; } };
         return (compareEQ(std::get<I>(lh), std::get<I>(rh)) &&  ...);
     }
