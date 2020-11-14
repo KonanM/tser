@@ -189,7 +189,6 @@ namespace tser{
         template<typename T>
         void load(T& t) {
             using V = std::decay_t<T>;
-
             if constexpr (is_custom_saveable_v<T>)
                 t.load(*this);
             else if constexpr (is_tser_t_v<T>)
@@ -232,7 +231,6 @@ namespace tser{
                 }
             }
         }
-
         template<typename T>
         T load() {
             T t{}; load(t); return t;
