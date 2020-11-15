@@ -122,7 +122,7 @@ namespace tser{
     template<class T> constexpr bool is_container_v = is_detected_v<has_begin_t, T>;
     template<class T> constexpr bool is_tuple_v = is_detected_v<has_tuple_t, T>;
     template<class T> constexpr bool is_tser_t_v = is_detected_v<has_members_t, T>;
-    template<class T> constexpr bool is_pointer_like_v = std::is_pointer_v<T> || tser::is_detected_v<has_element_t, T> || tser::is_detected_v<has_optional_t, T>;
+    template<class T> constexpr bool is_pointer_like_v = std::is_pointer_v<T> || is_detected_v<has_element_t, T> || is_detected_v<has_optional_t, T>;
     //implementation of the recursive json printing
     template<typename T>
     constexpr inline decltype(auto) print(std::ostream& os, T&& val) {
@@ -135,18 +135,18 @@ namespace tser{
                 os << (i++ == 0 ? "\n[" : ",") << tser::print(os, elem);
             os << "]\n";
         }
-        else if constexpr (tser::is_tser_t_v<T>) {
+        else if constexpr (is_tser_t_v<V> && !is_detected_v<has_outstream_op_t, V>) {
             auto pMem = [&](auto&& ... memberVal) { size_t i = 0;
             (((os << (i != 0 ? ", " : "") << '\"'), os << V::_memberNames[i++] << "\" : " << tser::print(os, memberVal)), ...); };
             os << "{ \"" << V::_typeName << "\": {"; std::apply(pMem, val.members()); os << "}}\n";
         }
-        else if constexpr (std::is_enum_v<V> &&! tser::is_detected_v<has_outstream_op_t, V>) {
+        else if constexpr (std::is_enum_v<V> &&! is_detected_v<has_outstream_op_t, V>) {
             os << tser::print(os, static_cast<std::underlying_type_t<V>>(val));
         }
-        else if constexpr (is_tuple_v<V>) {
+        else if constexpr (is_tuple_v<V> && !is_detected_v<has_outstream_op_t, V>) {
             std::apply([&](auto&& ... t) { int i = 0; os << "{"; (((i++ != 0 ? os << ", " : os), tser::print(os, t)), ...); os << "}"; }, val);
         }
-        else if constexpr (tser::is_detected_v<tser::has_optional_t, V> && !tser::is_detected_v<tser::has_element_t, V>) {
+        else if constexpr (is_detected_v<has_optional_t, V> && !is_detected_v<has_element_t, V>) {
             os << (val ? (os << (tser::print(os, *val)), "") : "null");
         }
         else
