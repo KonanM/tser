@@ -148,11 +148,12 @@ TEST(binaryArchive, customSerializationNoMacro)
 struct ThirdPartyStruct {
     int x = 1, y = 2;
 };
+
 namespace tser {
-    void save(const ThirdPartyStruct& t, tser::BinaryArchive& ba) {
+    void operator<<(const ThirdPartyStruct& t, tser::BinaryArchive& ba) {
         ba.save(t.x + t.y);
     }
-    void load(ThirdPartyStruct& t, tser::BinaryArchive& ba) {
+    void operator>>(ThirdPartyStruct& t, tser::BinaryArchive& ba) {
         t.x = ba.load<int>();
     }
 }

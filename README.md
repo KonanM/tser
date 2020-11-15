@@ -184,10 +184,10 @@ struct CustomPointNoMacro {
 };
 //alternatively you can also use a non intrusive version
 namespace tser {
-    void save(const CustomPointNoMacro& t, tser::BinaryArchive& ba) {
+    void operator<<(const CustomPointNoMacro& t, tser::BinaryArchive& ba) {
         ba.save(t.x + t.y);
     }
-    void load(CustomPointNoMacro& t, tser::BinaryArchive& ba) {
+    void operator>>(CustomPointNoMacro& t, tser::BinaryArchive& ba) {
         t.x = ba.load<int>();
     }
 }
