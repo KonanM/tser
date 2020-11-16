@@ -1,5 +1,5 @@
 ﻿cmake_minimum_required(VERSION 3.8)
-project(tser VERSION "0.1" LANGUAGES CXX)
+project(tser VERSION "1.0" LANGUAGES CXX)
 set(CMAKE_C_COMPILER cl.exe)
 option(TSER_OPT_BUILD_EXAMPLES "Build tser examples" OFF)
 option(TSER_OPT_BUILD_TESTS "Build and perform tser tests" OFF)
