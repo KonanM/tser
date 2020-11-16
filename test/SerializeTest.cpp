@@ -24,8 +24,8 @@ namespace std { \
         template<> \
         struct hash<Type> { \
             size_t operator()(const Type& t) const { \
-                tser::BinaryArchive bs; \
-                bs & t; \
+                tser::BinaryArchive bs(sizeof(Type) + 1); \
+                bs << t; \
                 return std::hash<std::string_view>()(bs.get_buffer()); \
         } \
     }; \
@@ -70,8 +70,8 @@ TEST(binaryArchive, readTuple)
     tser::BinaryArchive binaryArchive;
     auto someTuple = std::make_tuple(1, 2.0, std::string("Hello"));
     auto someTrivialTuple = std::make_tuple(1, 2.0);
-    binaryArchive & someTuple;
-    binaryArchive & someTrivialTuple;
+    binaryArchive << someTuple;
+    binaryArchive << someTrivialTuple;
     ASSERT_TRUE(binaryArchive.load<decltype(someTuple)>() == someTuple);
     ASSERT_EQ(binaryArchive.load<decltype(someTrivialTuple)>(), someTrivialTuple);
 }
@@ -80,7 +80,7 @@ TEST(binaryArchive, readArray)
 {
     tser::BinaryArchive binaryArchive;
     auto someArray = std::array<std::string, 3>{"abc", "def", "ghi"};
-    binaryArchive & someArray;
+    binaryArchive << someArray;
     auto loadedRawArray = binaryArchive.load<decltype(someArray)>();
     ASSERT_EQ(loadedRawArray, someArray);
 }
@@ -89,7 +89,7 @@ TEST(binaryArchive, readRawPtr)
 {
     tser::BinaryArchive binaryArchive;
     auto someArray = new std::string("Hello World!");
-    binaryArchive & someArray;
+    binaryArchive << someArray;
     ASSERT_TRUE(*std::unique_ptr<std::string>(binaryArchive.load<decltype(someArray)>()) == "Hello World!");
 }
 
@@ -97,7 +97,7 @@ TEST(binaryArchive, readCArray)
 {
     tser::BinaryArchive binaryArchive;
     int someInts[4] = { 1,2,3,4 };
-    binaryArchive & someInts;
+    binaryArchive << someInts;
     int loadedInts[4];
     binaryArchive.load(loadedInts);
     ASSERT_TRUE(std::equal(someInts, someInts + 4, loadedInts, loadedInts + 4));
@@ -175,8 +175,8 @@ struct Point
 TEST(binaryArchive, readPoints)
 {
     tser::BinaryArchive binaryArchive;
-    binaryArchive & Point{ 1,2 };
-    binaryArchive & Point{ 5,6 };
+    binaryArchive << Point{ 1,2 };
+    binaryArchive << Point{ 5,6 };
     ASSERT_TRUE((binaryArchive.load<Point>() == Point{ 1,2 }));
     ASSERT_TRUE((binaryArchive.load<Point>() == Point{ 5,6 }));
 }
@@ -200,7 +200,7 @@ TEST(binaryArchive, smartPointerOfCustom)
     tser::BinaryArchive binaryArchive;
     PointerWrapper smartWrapper{ new int(5), std::unique_ptr<Point>(new Point{1,2}), std::shared_ptr<Point>(new Point{1,2}) };
     //the content of a raw pointer is serialized, not the address
-    binaryArchive & (&smartWrapper);
+    binaryArchive << (&smartWrapper);
     //the serialized layout of shared_ptr<T>, unique_ptr<T>, optional<T> and T* are all the same
     //so if I really wanted to I could load T* as any of them
     auto loadedSmartWrapper = binaryArchive.load<std::unique_ptr<PointerWrapper>>();
@@ -229,7 +229,7 @@ TEST(binaryArchive, complexType)
     ComplexType c(Point{ 1,2 }, Point{ 3, 4 });
     c.ints.push_back('4');
     c.opt = std::make_optional(Point{ 7,8 });
-    binaryArchive & c;
+    binaryArchive << c;
     auto str = tser::encode_base64(binaryArchive.get_buffer());
     tser::BinaryArchive readStream;
     readStream.initialize(tser::decode_base64(str));

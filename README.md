@@ -31,8 +31,8 @@ If you need a battle tested, non-intrusive and feature rich serialization libary
 * Supports serialization of user defined types / containers
 * Supports recursive parsing of types (e.g. containers/pointers of serializable types)
 * Supports pretty printing to the console **in json format**
-* Supports printing of the serialized representation via base64 encoding
-* Supports automatic compression of integers via variable int encoding (see also [protobuf encoding]((https://developers.google.com/protocol-buffers/docs/encoding)))
+* Supports printing of the serialized representation via **base64 encoding**
+* Supports **automatic compression** of integers via variable int encoding (see also [protobuf encoding](https://developers.google.com/protocol-buffers/docs/encoding))
 
 ## Basic Example [![Try online](https://img.shields.io/badge/try-online-blue.svg)](https://godbolt.org/z/PTE8dM)
 
@@ -90,7 +90,7 @@ void test()
 }
 ```
 
-## Pretty printing example [![Try online](https://img.shields.io/badge/try-online-blue.svg)](https://godbolt.org/z/K4qehT)
+## Pretty printing example [![Try online](https://img.shields.io/badge/try-online-blue.svg)](https://godbolt.org/z/r1414M)
 Datastructures taken from [Cpp Serializer Benchmark](https://github.com/fraillt/cpp_serializers_benchmark/blob/master/testing_core/types.cpp)
 
 ```cpp
@@ -144,7 +144,7 @@ The output will be in json format (which can be [prettyfied](https://jsonformatt
 ## Varibale int encoding example
 
 Integers are compressed via variable int encoding. The basic idea is to indicate (in the highest bit of a byte) if there are following bytes. The first seven bytes are then used to store the lowest bits of the number.
-This way unsigned numbers from 0-127 only take 1 byte to store. Signed integers use zig-zag encoding so the range [-64,63] is encoded in one byte.
+This way unsigned numbers from 0-127 only take 1 byte to store. Signed integers use zig-zag encoding so the range [-64,63] is encoded in one byte. See [protobuf encoding](https://developers.google.com/protocol-buffers/docs/encoding) for a more detailed explanation.
 
 
 Feel free to grab the [varint_encoding.hpp](https://github.com/KonanM/tser/blob/master/include/tser/varint_encoding.hpp) header to use it as standalone header in your projects.
