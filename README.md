@@ -262,6 +262,17 @@ If you really just want to use tser for single file rapid prototyping it's also 
 
 ```#include <tser/tser.hpp>```
 
+If you are using CMake >= 3.11 you can also use FetchContent to download and use tser directly (tests and samples are not build by default).
+```c++
+FetchContent_Declare(
+  tser
+  GIT_REPOSITORY https://github.com/KonanM/tser.git
+  GIT_TAG        v1.0
+)
+FetchContent_MakeAvailable(tser)
+target_link_libraries(mylib PRIVATE tser)
+```
+
 ## Limitations
 * Only supports default constructible types
 * Is intrusive and uses a single macro to be able to reflect over members of a given type
