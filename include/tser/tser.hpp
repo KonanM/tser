@@ -73,7 +73,7 @@ namespace tser{
             os << "]\n";
         }
         else if constexpr (is_tser_t_v<V> && !is_detected_v<has_outstream_op_t, V>) {
-            auto pMem = [&](auto&& ... memberVal) { size_t i = 0;
+            auto pMem = [&](auto& ... memberVal) { size_t i = 0;
             (((os << (i != 0 ? ", " : "") << '\"'), os << V::_memberNames[i++] << "\" : " << tser::print(os, memberVal)), ...); };
             os << "{ \"" << V::_typeName << "\": {"; std::apply(pMem, val.members()); os << "}}\n";
         }
@@ -81,7 +81,7 @@ namespace tser{
             os << tser::print(os, static_cast<std::underlying_type_t<V>>(val));
         }
         else if constexpr (is_tuple_v<V> && !is_detected_v<has_outstream_op_t, V>) {
-            std::apply([&](auto&& ... t) { int i = 0; os << "{"; (((i++ != 0 ? os << ", " : os), tser::print(os, t)), ...); os << "}"; }, val);
+            std::apply([&](auto& ... t) { int i = 0; os << "{"; (((i++ != 0 ? os << ", " : os), tser::print(os, t)), ...); os << "}"; }, val);
         }
         else if constexpr (is_detected_v<has_optional_t, V> && !is_detected_v<has_element_t, V>) {
             os << (val ? (os << (tser::print(os, *val)), "") : "null");
@@ -130,9 +130,9 @@ namespace tser{
             else if constexpr (is_detected_v<has_custom_save_t, T>)
                 t.save(*this);
             else if constexpr(is_tser_t_v<T>)
-                std::apply([&](auto&& ... mVal) { (save(mVal), ...); }, t.members());
+                std::apply([&](auto& ... mVal) { (save(mVal), ...); }, t.members());
             else if constexpr(is_tuple_v<T>)
-                std::apply([&](auto&& ... tVal) { (save(tVal), ...); }, t);
+                std::apply([&](auto& ... tVal) { (save(tVal), ...); }, t);
             else if constexpr (is_pointer_like_v<T>) {
                 save(static_cast<bool>(t));
                 if (t)
@@ -164,9 +164,9 @@ namespace tser{
             else if constexpr (is_detected_v<has_custom_save_t, T>)
                 t.load(*this);
             else if constexpr (is_tser_t_v<T>)
-                std::apply([&](auto&& ... mVal) { (load(mVal), ...); }, t.members());
+                std::apply([&](auto& ... mVal) { (load(mVal), ...); }, t.members());
             else if constexpr (is_tuple_v<V>)
-                std::apply([&](auto&& ... tVal) { (load(tVal), ...); }, t);
+                std::apply([&](auto& ... tVal) { (load(tVal), ...); }, t);
             else if constexpr (is_pointer_like_v<T>) {
                 if constexpr (std::is_pointer_v<T>) {
                     t = load<bool>() ? (t = new std::remove_pointer_t<T>(), load(*t), t) : nullptr;
@@ -179,15 +179,12 @@ namespace tser{
             else if constexpr (is_container_v<T>) {
                 if constexpr (!detail::is_array<T>::value) {
                     const auto size = load<decltype(t.size())>();
-                    for (size_t i = 0; i < size; ++i) {
-                        if constexpr (is_detected_v<has_mapped_t, V>) {
-                            auto key = load<typename V::key_type>();//has to be on two lines otherwise order is not deterministic
-                            t.emplace(std::move(key), load<typename V::mapped_type>());
-                        }
-                        else {
-                            t.insert(t.end(), load<std::decay_t<has_begin_t<T>>>());
-                        }
-                    }
+                    using VT = typename V::value_type;
+                    for (size_t i = 0; i < size; ++i)
+                        if constexpr (!is_detected_v<has_mapped_t, V>)
+                            t.insert(t.end(), load<VT>());
+                        else //we have to special case map, because of the const key
+                            t.emplace(VT{ load<typename V::key_type>(), load<typename V::mapped_type>() });
                 }
                 else {
                     for (auto& val : t)
@@ -205,7 +202,7 @@ namespace tser{
         }
         template<typename T>
         T load() {
-            T t{}; load(t); return t;
+            std::remove_const_t<T> t{}; load(t); return t;
         }
         template<typename T>
         friend BinaryArchive& operator&(BinaryArchive& ba, const T& t) {
