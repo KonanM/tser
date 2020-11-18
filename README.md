@@ -141,7 +141,7 @@ The output will be in json format (which can be [prettyfied](https://jsonformatt
 }}
 ```
 
-## Varibale int encoding example
+## Variable int encoding example
 
 Integers are compressed via variable int encoding. The basic idea is to indicate (in the highest bit of a byte) if there are following bytes. The first seven bytes are then used to store the lowest bits of the number.
 This way unsigned numbers from 0-127 only take 1 byte to store. Signed integers use zig-zag encoding so the range [-64,63] is encoded in one byte. See [protobuf encoding](https://developers.google.com/protocol-buffers/docs/encoding) for a more detailed explanation.
@@ -253,7 +253,7 @@ struct Point {
     static constexpr std::array<std::string_view, 2> _memberNames{"x", "y"};
 };
 ```
-By provoding a function ```members()``` to iterate over the types we can now use SFINAE along with the detection idiom to detect how a type should be serialized.
+By providing a function ```members()``` to iterate over the types we can now use SFINAE along with the detection idiom to detect how a type should be serialized.
 The printing of types is realized with the static ```_memberNames``` field.
 
 ## Integration
