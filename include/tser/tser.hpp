@@ -33,7 +33,8 @@ namespace tser{
         template<template<typename, size_t> class TArray, typename T, size_t N>
         struct is_array<TArray<T, N>> : std::true_type {};
         constexpr size_t n_args(char const* c, size_t nargs = 1) {
-            for (; *c; ++c) if (*c == ',') ++nargs; return nargs;
+            for (; *c; ++c) if (*c == ',') ++nargs;
+            return nargs;
         }
         constexpr size_t str_size(char const* c, size_t strSize = 1) {
             for (; *c; ++c) ++strSize; return strSize;
