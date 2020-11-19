@@ -73,7 +73,7 @@ before_script:
   - rm -rf build
   - mkdir -p build
   - cd build
-  - cmake -G "Ninja" ..
+  - cmake -G "Ninja" ../test
 
 script:
   - cmake --build . -- -j${JOBS}

@@ -1,30 +1,56 @@
 ﻿cmake_minimum_required(VERSION 3.8)
-project(tser VERSION "1.0" LANGUAGES CXX)
-set(CMAKE_C_COMPILER cl.exe)
-option(TSER_OPT_BUILD_EXAMPLES "Build tser examples" OFF)
-option(TSER_OPT_BUILD_TESTS "Build and perform tser tests" OFF)
-option(TSER_OPT_BUILD_SINGLE_HEADER "Build build the single header, when the tests are build" ON)
 
-set(HEADER 
-$<INSTALL_INTERFACE:include/tser/base64encoding.hpp> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/tser/base64_encoding.hpp>
-$<INSTALL_INTERFACE:include/tser/base64encoding.hpp> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/tser/varint_encoding.hpp>
-$<INSTALL_INTERFACE:include/tser/tser.hpp> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/tser/tser.hpp>
-)
+project(tser VERSION 1.0.0 LANGUAGES CXX)
+
+# ---- Warning guard ----
+
+# Protect dependents from this project's warnings if the guard isn't disabled
+set(tser_warning_guard SYSTEM)
+if(tser_INCLUDE_WITHOUT_SYSTEM)
+  set(tser_warning_guard "")
+endif()
+
+# ---- Declare library ----
 
 add_library(tser INTERFACE)
-target_sources(tser INTERFACE ${HEADER})
-target_include_directories(tser INTERFACE $<INSTALL_INTERFACE:include> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+add_library(KonanM::tser ALIAS tser)
+
+target_include_directories(tser
+        ${tser_warning_guard}
+        INTERFACE
+        "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>")
+
 target_compile_features(tser INTERFACE cxx_std_17)
 
-if(MSVC)
-    add_custom_target(tser.header SOURCES ${HEADER})
-endif()
+# ---- Install ----
 
-if(TSER_OPT_BUILD_EXAMPLES)
-    add_subdirectory(example)
-endif()
+include(CMakePackageConfigHelpers)
+include(GNUInstallDirs)
 
-if(TSER_OPT_BUILD_TESTS)
-    enable_testing()
-    add_subdirectory(test)
-endif()
+set(tser_directory "tser-${PROJECT_VERSION}")
+set(tser_include_directory
+        "${CMAKE_INSTALL_INCLUDEDIR}/${tser_directory}")
+
+install(TARGETS tser
+        EXPORT tserTargets
+        INCLUDES DESTINATION "${tser_include_directory}")
+
+set(tser_install_cmakedir
+        "${CMAKE_INSTALL_LIBDIR}/cmake/${tser_directory}")
+
+write_basic_package_version_file(
+        tserConfigVersion.cmake
+        COMPATIBILITY SameMajorVersion
+        ARCH_INDEPENDENT)
+
+install(EXPORT tserTargets
+        FILE tserConfig.cmake
+        NAMESPACE KonanM::
+        DESTINATION "${tser_install_cmakedir}")
+
+install(FILES
+        "${PROJECT_BINARY_DIR}/tserConfigVersion.cmake"
+        DESTINATION "${tser_install_cmakedir}")
+
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/"
+        DESTINATION "${tser_include_directory}")
