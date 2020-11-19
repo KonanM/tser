@@ -56,8 +56,8 @@ struct Robot {
 
 int main()
 {
-    auto robot = Robot{ x::Point{3,4}, Item::RADAR };
-    std::cout << robot << '\n'; // prints { "Robot": {"point" : { "Point": {"x" : 3, "y" : 4}}, "item" : R}}
+    auto robot = Robot{ Point{3,4}, Item::RADAR };
+    std::cout << robot << '\n'; // prints { "Robot": {"point" : { "Point": {"x" : 3, "y" : 4}}, "item" : "R"}}
     std::cout << Robot() << '\n'; // prints { "Robot": {"point" : { "Point": {"x" : 3, "y" : 4}}, "item" : {null}}}
     tser::BinaryArchive ba;
     ba.save(robot);
