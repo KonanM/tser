@@ -58,7 +58,7 @@ int main()
 {
     auto robot = Robot{ Point{3,4}, Item::RADAR };
     std::cout << robot << '\n'; // prints { "Robot": {"point" : { "Point": {"x" : 3, "y" : 4}}, "item" : "R"}}
-    std::cout << Robot() << '\n'; // prints { "Robot": {"point" : { "Point": {"x" : 3, "y" : 4}}, "item" : {null}}}
+    std::cout << Robot() << '\n'; // prints { "Robot": {"point" : { "Point": {"x" : 0, "y" : 0}}, "item" : {null}}}
     tser::BinaryArchive ba;
     ba.save(robot);
     std::cout << ba; //prints BggBUg to the console via base64 encoding (base64 means only printable characters are used)
