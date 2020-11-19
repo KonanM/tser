@@ -86,6 +86,8 @@ namespace tser{
         else if constexpr (is_detected_v<has_optional_t, V> && !is_detected_v<has_element_t, V>) {
             os << (val ? (os << (tser::print(os, *val)), "") : "null");
         }
+        else if constexpr (is_detected_v<has_element_t, V>)
+            os << val.get();
         else
             os << val;
         return "";
