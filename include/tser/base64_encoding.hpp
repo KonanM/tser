@@ -10,9 +10,10 @@ namespace tser {
     static constexpr auto g_decodingTable = []() { std::array<char, 256> decTable{}; for (char i = 0; i < 64; ++i) decTable[static_cast<unsigned>(g_encodingTable[static_cast<size_t>(i)])] = i; return decTable; }();
     static std::string encode_base64(std::string_view in) {
         std::string out;
-        int val = 0, valb = -6;
+        unsigned val = 0;
+        int valb = -6;
         for (char c : in) {
-            val = (val << 8) + c;
+            val = (val << 8) + static_cast<unsigned>(c);
             valb += 8;
             while (valb >= 0) {
                 out.push_back(g_encodingTable[(val >> valb) & 0x3F]);
@@ -24,9 +25,10 @@ namespace tser {
     }
     static std::string decode_base64(std::string_view in) {
         std::string out;
-        int val = 0, valb = -8;
+        unsigned val = 0;
+        int valb = -8;
         for (char c : in) {
-            val = (val << 6) + g_decodingTable[static_cast<unsigned char>(c)];
+            val = (val << 6) + static_cast<unsigned>(g_decodingTable[static_cast<unsigned char>(c)]);
             valb += 6;
             if (valb >= 0) {
                 out.push_back(char((val >> valb) & 0xFF));

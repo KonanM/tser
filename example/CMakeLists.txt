@@ -24,7 +24,6 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
           -Wextra
           -Wno-c++98-compat
           -Wno-c++98-compat-pedantic
-          -Wno-missing-prototypes
           -Wno-exit-time-destructors
           # it would be nice if googletest could fix their clang warnings :-)
           -Wno-undef

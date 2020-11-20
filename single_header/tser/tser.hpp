@@ -46,9 +46,10 @@ namespace tser {
     static constexpr auto g_decodingTable = []() { std::array<char, 256> decTable{}; for (char i = 0; i < 64; ++i) decTable[static_cast<unsigned>(g_encodingTable[static_cast<size_t>(i)])] = i; return decTable; }();
     static std::string encode_base64(std::string_view in) {
         std::string out;
-        int val = 0, valb = -6;
+        unsigned val = 0;
+        int valb = -6;
         for (char c : in) {
-            val = (val << 8) + c;
+            val = (val << 8) + static_cast<unsigned>(c);
             valb += 8;
             while (valb >= 0) {
                 out.push_back(g_encodingTable[(val >> valb) & 0x3F]);
@@ -60,9 +61,10 @@ namespace tser {
     }
     static std::string decode_base64(std::string_view in) {
         std::string out;
-        int val = 0, valb = -8;
+        unsigned val = 0;
+        int valb = -8;
         for (char c : in) {
-            val = (val << 6) + g_decodingTable[static_cast<unsigned char>(c)];
+            val = (val << 6) + static_cast<unsigned>(g_decodingTable[static_cast<unsigned char>(c)]);
             valb += 6;
             if (valb >= 0) {
                 out.push_back(char((val >> valb) & 0xFF));
@@ -96,7 +98,8 @@ namespace tser{
         template<template<typename, size_t> class TArray, typename T, size_t N>
         struct is_array<TArray<T, N>> : std::true_type {};
         constexpr size_t n_args(char const* c, size_t nargs = 1) {
-            for (; *c; ++c) if (*c == ',') ++nargs; return nargs;
+            for (; *c; ++c) if (*c == ',') ++nargs;
+            return nargs;
         }
         constexpr size_t str_size(char const* c, size_t strSize = 1) {
             for (; *c; ++c) ++strSize; return strSize;
@@ -149,6 +152,8 @@ namespace tser{
         else if constexpr (is_detected_v<has_optional_t, V> && !is_detected_v<has_element_t, V>) {
             os << (val ? (os << (tser::print(os, *val)), "") : "null");
         }
+        else if constexpr (is_detected_v<has_element_t, V>)
+            os << val.get();
         else
             os << val;
         return "";
@@ -298,19 +303,19 @@ namespace tser{
 inline decltype(auto) members() const { return std::tie(__VA_ARGS__); } \
 inline decltype(auto) members() { return std::tie(__VA_ARGS__); }  \
 static constexpr std::array<char, tser::detail::str_size(#__VA_ARGS__)> _memberNameData = [](){ \
-std::array<char, tser::detail::str_size(#__VA_ARGS__)> chars{}; size_t idx = 0; constexpr auto* ini(#__VA_ARGS__);  \
-for (char const* c = ini; *c; ++c, ++idx) if(*c != ',') chars[idx] = *c;  return chars;}(); \
+std::array<char, tser::detail::str_size(#__VA_ARGS__)> chars{'\0'}; size_t idx = 0; constexpr auto* ini(#__VA_ARGS__);  \
+for (char const* c = ini; *c; ++c, ++idx) if(*c != ',' && *c != ' ') chars[idx] = *c;  return chars;}(); \
 static constexpr const char* _typeName = #Type; \
 static constexpr std::array<const char*, tser::detail::n_args(#__VA_ARGS__)> _memberNames = \
-[](){ std::array<const char*, tser::detail::n_args(#__VA_ARGS__)> out{ {Type::_memberNameData.data()} }; \
-for(size_t i = 0, nArgs = 0; i < Type::_memberNameData.size() - 1; ++i) \
-if (Type::_memberNameData[i] == '\0'){++nArgs; out[nArgs] = &Type::_memberNameData[i] + 1;} \
-return out;}();\
+[](){ std::array<const char*, tser::detail::n_args(#__VA_ARGS__)> out{ }; \
+for(size_t i = 0, nArgs = 0; nArgs < tser::detail::n_args(#__VA_ARGS__) ; ++i) { \
+while(Type::_memberNameData[i] == '\0') i++; out[nArgs++] = &Type::_memberNameData[i]; \
+while(Type::_memberNameData[++i] != '\0'); } return out;}();\
 template<typename OT, std::enable_if_t<std::is_same_v<OT,Type> && !tser::is_detected_v<tser::has_equal_t, OT>, int> = 0>\
 friend bool operator==(const Type& lhs, const OT& rhs) { return lhs.members() == rhs.members(); }\
 template<typename OT, std::enable_if_t<std::is_same_v<OT,Type> && !tser::is_detected_v<tser::has_nequal_t, OT>, int> = 0>\
 friend bool operator!=(const Type& lhs, const OT& rhs) { return !(lhs == rhs); }\
 template<typename OT, std::enable_if_t<std::is_same_v<OT,Type> && !tser::is_detected_v<tser::has_smaller_t, OT>, int> = 0>\
 friend bool operator< (const OT& lhs, const OT& rhs) { return tser::less(lhs, rhs); } \
-template<typename OT, std::enable_if_t<std::is_same_v<OT, Type> && !tser::is_detected_v<tser::has_outstream_op_t, OT>, int> = 0>\
+template<typename OT, std::enable_if_t<std::is_same_v<OT,Type> && !tser::is_detected_v<tser::has_outstream_op_t, OT>, int> = 0>\
 friend std::ostream& operator<<(std::ostream& os, const OT& t) { tser::print(os, t); return os; }
