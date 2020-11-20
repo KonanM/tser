@@ -3,6 +3,7 @@
 #include "gtest/gtest.h"
 #include "tser/tser.hpp"
 
+#include <numeric>
 #include <optional>
 #include <sstream>
 #include <unordered_map>
@@ -44,17 +45,39 @@ TEST(binaryArchive, readBits)
     ASSERT_TRUE(binaryArchive.load<bool>());
 }
 
+template <typename Integer>
+void TestIntegerSerialisation()
+{
+    std::array<long long, 3000> integerSequence;
+    std::iota(integerSequence.begin(), integerSequence.end(), 0);
+
+    tser::BinaryArchive binaryArchive;
+
+    for (auto i : integerSequence) {
+        binaryArchive.save(static_cast<Integer>(i));
+        binaryArchive.save(static_cast<Integer>(-i));
+    }
+
+    binaryArchive.reset();
+
+    for (auto i : integerSequence) {
+        ASSERT_EQ(binaryArchive.load<Integer>(), static_cast<Integer>(i));
+        ASSERT_EQ(binaryArchive.load<Integer>(), static_cast<Integer>(-i));
+    }
+}
 
 TEST(binaryArchive, readInts)
 {
-    tser::BinaryArchive binaryArchive;
-    binaryArchive.save(15);
-    binaryArchive.save(256);
-    binaryArchive.save(-256);
-    binaryArchive.reset();
-    ASSERT_TRUE(binaryArchive.load<int>() == 15);
-    ASSERT_TRUE(binaryArchive.load<int>() == 256);
-    ASSERT_TRUE(binaryArchive.load<int>() == -256);
+    TestIntegerSerialisation<signed char>();
+    TestIntegerSerialisation<unsigned char>();
+    TestIntegerSerialisation<signed short>();
+    TestIntegerSerialisation<unsigned short>();
+    TestIntegerSerialisation<signed int>();
+    TestIntegerSerialisation<unsigned int>();
+    TestIntegerSerialisation<signed long>();
+    //TestIntegerSerialisation<unsigned long>();
+    TestIntegerSerialisation<signed long long>();
+    //TestIntegerSerialisation<unsigned long long>();
 }
 
 enum class SomeEnum { A, B, C };
