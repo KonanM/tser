@@ -3,9 +3,11 @@
 #include "gtest/gtest.h"
 #include "tser/tser.hpp"
 
+#include <numeric>
+#include <optional>
+#include <sstream>
 #include <unordered_map>
 #include <unordered_set>
-#include <optional>
 
 //if you need deep pointer comparisions you could grab this macro
 namespace tser::detail {
@@ -43,17 +45,39 @@ TEST(binaryArchive, readBits)
     ASSERT_TRUE(binaryArchive.load<bool>());
 }
 
+template <typename Integer>
+void TestIntegerSerialisation()
+{
+    std::array<long long, 3000> integerSequence;
+    std::iota(integerSequence.begin(), integerSequence.end(), 0);
+
+    tser::BinaryArchive binaryArchive;
+
+    for (auto i : integerSequence) {
+        binaryArchive.save(static_cast<Integer>(i));
+        binaryArchive.save(static_cast<Integer>(-i));
+    }
+
+    binaryArchive.reset();
+
+    for (auto i : integerSequence) {
+        ASSERT_EQ(binaryArchive.load<Integer>(), static_cast<Integer>(i));
+        ASSERT_EQ(binaryArchive.load<Integer>(), static_cast<Integer>(-i));
+    }
+}
 
 TEST(binaryArchive, readInts)
 {
-    tser::BinaryArchive binaryArchive;
-    binaryArchive.save(15);
-    binaryArchive.save(256);
-    binaryArchive.save(-256);
-    binaryArchive.reset();
-    ASSERT_TRUE(binaryArchive.load<int>() == 15);
-    ASSERT_TRUE(binaryArchive.load<int>() == 256);
-    ASSERT_TRUE(binaryArchive.load<int>() == -256);
+    TestIntegerSerialisation<signed char>();
+    TestIntegerSerialisation<unsigned char>();
+    TestIntegerSerialisation<signed short>();
+    TestIntegerSerialisation<unsigned short>();
+    TestIntegerSerialisation<signed int>();
+    TestIntegerSerialisation<unsigned int>();
+    TestIntegerSerialisation<signed long>();
+    TestIntegerSerialisation<unsigned long>();
+    TestIntegerSerialisation<signed long long>();
+    TestIntegerSerialisation<unsigned long long>();
 }
 
 enum class SomeEnum { A, B, C };
@@ -88,7 +112,8 @@ TEST(binaryArchive, readArray)
 TEST(binaryArchive, readRawPtr)
 {
     tser::BinaryArchive binaryArchive;
-    auto someArray = new std::string("Hello World!");
+    std::string testStr("Hello World!");
+    auto * someArray = &testStr;
     binaryArchive << someArray;
     ASSERT_TRUE(*std::unique_ptr<std::string>(binaryArchive.load<decltype(someArray)>()) == "Hello World!");
 }
@@ -150,10 +175,10 @@ struct ThirdPartyStruct {
 };
 
 namespace tser {
-    void operator<<(const ThirdPartyStruct& t, tser::BinaryArchive& ba) {
+    static void operator<<(const ThirdPartyStruct& t, tser::BinaryArchive& ba) {
         ba.save(t.x + t.y);
     }
-    void operator>>(ThirdPartyStruct& t, tser::BinaryArchive& ba) {
+    static void operator>>(ThirdPartyStruct& t, tser::BinaryArchive& ba) {
         t.x = ba.load<int>();
     }
 }
@@ -283,4 +308,64 @@ TEST(fixed_size, array_carray)
     constexpr int num[5]{};
     static_assert(tser::detail::is_array<decltype(num)>::value);
     static_assert(!tser::detail::is_array<std::vector<int>>::value);
+}
+
+
+struct MacroNoSpace
+{
+    DEFINE_SERIALIZABLE(MacroNoSpace,i,j,k)
+    int i = 3;
+    int j = 1;
+    int k = 4;
+};
+
+struct MacroSomeSpace
+{
+    DEFINE_SERIALIZABLE(MacroSomeSpace, i, j, k)
+    int i = 3;
+    int j = 1;
+    int k = 4;
+};
+
+struct MacroCrazySpace
+{
+    DEFINE_SERIALIZABLE(
+        MacroCrazySpace  ,
+    i ,
+    		j   ,
+        k
+    )
+    int i = 3;
+    int j = 1;
+    int k = 4;
+};
+
+template <typename Type>
+void TestMacroSpaces(const char * name)
+{
+    std::stringstream stream;
+    Type type;
+    stream << type;
+
+    const char macroExpectationFormat[] =
+        "{ \"%s\": {\"i\" : 3, \"j\" : 1, \"k\" : 4}}\n";
+
+    char expectation[128];
+    snprintf(expectation, sizeof(expectation), macroExpectationFormat, name);
+    ASSERT_EQ(stream.str(), expectation);
+}
+
+TEST(macroSpaces, noSpace)
+{
+    TestMacroSpaces<MacroNoSpace>("MacroNoSpace");
+}
+
+TEST(macroSpaces, someSpace)
+{
+    TestMacroSpaces<MacroSomeSpace>("MacroSomeSpace");
+}
+
+TEST(macroSpaces, crazySpace)
+{
+    TestMacroSpaces<MacroCrazySpace>("MacroCrazySpace");
 }
