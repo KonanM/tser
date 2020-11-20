@@ -46,7 +46,8 @@ namespace tser {
     static constexpr auto g_decodingTable = []() { std::array<char, 256> decTable{}; for (char i = 0; i < 64; ++i) decTable[static_cast<unsigned>(g_encodingTable[static_cast<size_t>(i)])] = i; return decTable; }();
     static std::string encode_base64(std::string_view in) {
         std::string out;
-        int val = 0, valb = -6;
+        unsigned val = 0;
+        int valb = -6;
         for (char c : in) {
             val = (val << 8) + c;
             valb += 8;
@@ -60,7 +61,8 @@ namespace tser {
     }
     static std::string decode_base64(std::string_view in) {
         std::string out;
-        int val = 0, valb = -8;
+        unsigned val = 0;
+        int valb = -8;
         for (char c : in) {
             val = (val << 6) + g_decodingTable[static_cast<unsigned char>(c)];
             valb += 6;
@@ -96,10 +98,36 @@ namespace tser{
         template<template<typename, size_t> class TArray, typename T, size_t N>
         struct is_array<TArray<T, N>> : std::true_type {};
         constexpr size_t n_args(char const* c, size_t nargs = 1) {
-            for (; *c; ++c) if (*c == ',') ++nargs; return nargs;
+            for (; *c; ++c) if (*c == ',') ++nargs;
+            return nargs;
         }
-        constexpr size_t str_size(char const* c, size_t strSize = 1) {
-            for (; *c; ++c) ++strSize; return strSize;
+
+        template <size_t Length>
+        constexpr auto make_name_data(const char (&args)[Length]) {
+            std::array<char, Length> chars{};
+            for (size_t i = 0; i < Length; i++) {
+                const char ch = args[i];
+                if (ch != ',' && ch != ' ') {
+                    chars[i] = ch;
+                }
+            }
+            return chars;
+        }
+
+        template <size_t Length>
+        constexpr auto make_names(const std::array<char, Length>& data) {
+            std::array<const char*, Length> names{};
+            const char ** out = names.data();
+            const char * currentName = data.data();
+            for (const char& ch : data) {
+                if (ch == '\0' && currentName != nullptr) {
+                    *out++ = currentName;
+                    currentName = nullptr;
+                } else if (ch != '\0' && currentName == nullptr) {
+                    currentName = &ch;
+                }
+            }
+            return names;
         }
     }
     // we need a bunch of template metaprogramming for being able to differentiate between different types 
@@ -149,6 +177,8 @@ namespace tser{
         else if constexpr (is_detected_v<has_optional_t, V> && !is_detected_v<has_element_t, V>) {
             os << (val ? (os << (tser::print(os, *val)), "") : "null");
         }
+        else if constexpr (is_detected_v<has_element_t, V>)
+            os << val.get();
         else
             os << val;
         return "";
@@ -297,15 +327,9 @@ namespace tser{
 #define DEFINE_SERIALIZABLE(Type, ...) \
 inline decltype(auto) members() const { return std::tie(__VA_ARGS__); } \
 inline decltype(auto) members() { return std::tie(__VA_ARGS__); }  \
-static constexpr std::array<char, tser::detail::str_size(#__VA_ARGS__)> _memberNameData = [](){ \
-std::array<char, tser::detail::str_size(#__VA_ARGS__)> chars{}; size_t idx = 0; constexpr auto* ini(#__VA_ARGS__);  \
-for (char const* c = ini; *c; ++c, ++idx) if(*c != ',') chars[idx] = *c;  return chars;}(); \
+static constexpr auto _memberNameData = tser::detail::make_name_data(#__VA_ARGS__); \
 static constexpr const char* _typeName = #Type; \
-static constexpr std::array<const char*, tser::detail::n_args(#__VA_ARGS__)> _memberNames = \
-[](){ std::array<const char*, tser::detail::n_args(#__VA_ARGS__)> out{ {Type::_memberNameData.data()} }; \
-for(size_t i = 0, nArgs = 0; i < Type::_memberNameData.size() - 1; ++i) \
-if (Type::_memberNameData[i] == '\0'){++nArgs; out[nArgs] = &Type::_memberNameData[i] + 1;} \
-return out;}();\
+static constexpr auto _memberNames = tser::detail::make_names(Type::_memberNameData); \
 template<typename OT, std::enable_if_t<std::is_same_v<OT,Type> && !tser::is_detected_v<tser::has_equal_t, OT>, int> = 0>\
 friend bool operator==(const Type& lhs, const OT& rhs) { return lhs.members() == rhs.members(); }\
 template<typename OT, std::enable_if_t<std::is_same_v<OT,Type> && !tser::is_detected_v<tser::has_nequal_t, OT>, int> = 0>\
