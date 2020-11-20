@@ -36,33 +36,8 @@ namespace tser{
             for (; *c; ++c) if (*c == ',') ++nargs;
             return nargs;
         }
-
-        template <size_t Length>
-        constexpr auto make_name_data(const char (&args)[Length]) {
-            std::array<char, Length> chars{};
-            for (size_t i = 0; i < Length; i++) {
-                const char ch = args[i];
-                if (ch != ',' && ch != ' ') {
-                    chars[i] = ch;
-                }
-            }
-            return chars;
-        }
-
-        template <size_t Length>
-        constexpr auto make_names(const std::array<char, Length>& data) {
-            std::array<const char*, Length> names{};
-            const char ** out = names.data();
-            const char * currentName = data.data();
-            for (const char& ch : data) {
-                if (ch == '\0' && currentName != nullptr) {
-                    *out++ = currentName;
-                    currentName = nullptr;
-                } else if (ch != '\0' && currentName == nullptr) {
-                    currentName = &ch;
-                }
-            }
-            return names;
+        constexpr size_t str_size(char const* c, size_t strSize = 1) {
+            for (; *c; ++c) ++strSize; return strSize;
         }
     }
     // we need a bunch of template metaprogramming for being able to differentiate between different types 
@@ -262,14 +237,20 @@ namespace tser{
 #define DEFINE_SERIALIZABLE(Type, ...) \
 inline decltype(auto) members() const { return std::tie(__VA_ARGS__); } \
 inline decltype(auto) members() { return std::tie(__VA_ARGS__); }  \
-static constexpr auto _memberNameData = tser::detail::make_name_data(#__VA_ARGS__); \
+static constexpr std::array<char, tser::detail::str_size(#__VA_ARGS__)> _memberNameData = [](){ \
+std::array<char, tser::detail::str_size(#__VA_ARGS__)> chars{'\0'}; size_t idx = 0; constexpr auto* ini(#__VA_ARGS__);  \
+for (char const* c = ini; *c; ++c, ++idx) if(*c != ',' && *c != ' ') chars[idx] = *c;  return chars;}(); \
 static constexpr const char* _typeName = #Type; \
-static constexpr auto _memberNames = tser::detail::make_names(Type::_memberNameData); \
+static constexpr std::array<const char*, tser::detail::n_args(#__VA_ARGS__)> _memberNames = \
+[](){ std::array<const char*, tser::detail::n_args(#__VA_ARGS__)> out{ }; \
+for(size_t i = 0, nArgs = 0; nArgs < tser::detail::n_args(#__VA_ARGS__) ; ++i) { \
+while(Type::_memberNameData[i] == '\0') i++; out[nArgs++] = &Type::_memberNameData[i]; \
+while(Type::_memberNameData[++i] != '\0'); } return out;}();\
 template<typename OT, std::enable_if_t<std::is_same_v<OT,Type> && !tser::is_detected_v<tser::has_equal_t, OT>, int> = 0>\
 friend bool operator==(const Type& lhs, const OT& rhs) { return lhs.members() == rhs.members(); }\
 template<typename OT, std::enable_if_t<std::is_same_v<OT,Type> && !tser::is_detected_v<tser::has_nequal_t, OT>, int> = 0>\
 friend bool operator!=(const Type& lhs, const OT& rhs) { return !(lhs == rhs); }\
 template<typename OT, std::enable_if_t<std::is_same_v<OT,Type> && !tser::is_detected_v<tser::has_smaller_t, OT>, int> = 0>\
 friend bool operator< (const OT& lhs, const OT& rhs) { return tser::less(lhs, rhs); } \
-template<typename OT, std::enable_if_t<std::is_same_v<OT, Type> && !tser::is_detected_v<tser::has_outstream_op_t, OT>, int> = 0>\
+template<typename OT, std::enable_if_t<std::is_same_v<OT,Type> && !tser::is_detected_v<tser::has_outstream_op_t, OT>, int> = 0>\
 friend std::ostream& operator<<(std::ostream& os, const OT& t) { tser::print(os, t); return os; }

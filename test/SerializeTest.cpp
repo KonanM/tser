@@ -175,10 +175,10 @@ struct ThirdPartyStruct {
 };
 
 namespace tser {
-    void operator<<(const ThirdPartyStruct& t, tser::BinaryArchive& ba) {
+    static void operator<<(const ThirdPartyStruct& t, tser::BinaryArchive& ba) {
         ba.save(t.x + t.y);
     }
-    void operator>>(ThirdPartyStruct& t, tser::BinaryArchive& ba) {
+    static void operator>>(ThirdPartyStruct& t, tser::BinaryArchive& ba) {
         t.x = ba.load<int>();
     }
 }
