@@ -149,7 +149,7 @@ namespace tser{
             }
             else
             {
-                if (m_bufferSize + sizeof(T) > m_bytes.size())
+                if (m_bufferSize + sizeof(T) + sizeof(T) / 4 > m_bytes.size())
                     m_bytes.resize((m_bufferSize + sizeof(T)) * 2);
                 if constexpr (std::is_integral_v<T> && sizeof(T) > 2)
                     m_bufferSize += encode_varint(t, m_bytes.data() + m_bufferSize);

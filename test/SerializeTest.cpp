@@ -75,9 +75,9 @@ TEST(binaryArchive, readInts)
     TestIntegerSerialisation<signed int>();
     TestIntegerSerialisation<unsigned int>();
     TestIntegerSerialisation<signed long>();
-    //TestIntegerSerialisation<unsigned long>();
+    TestIntegerSerialisation<unsigned long>();
     TestIntegerSerialisation<signed long long>();
-    //TestIntegerSerialisation<unsigned long long>();
+    TestIntegerSerialisation<unsigned long long>();
 }
 
 enum class SomeEnum { A, B, C };
