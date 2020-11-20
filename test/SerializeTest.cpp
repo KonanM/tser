@@ -3,9 +3,10 @@
 #include "gtest/gtest.h"
 #include "tser/tser.hpp"
 
+#include <optional>
+#include <sstream>
 #include <unordered_map>
 #include <unordered_set>
-#include <optional>
 
 //if you need deep pointer comparisions you could grab this macro
 namespace tser::detail {
@@ -283,4 +284,64 @@ TEST(fixed_size, array_carray)
     constexpr int num[5]{};
     static_assert(tser::detail::is_array<decltype(num)>::value);
     static_assert(!tser::detail::is_array<std::vector<int>>::value);
+}
+
+
+struct MacroNoSpace
+{
+    DEFINE_SERIALIZABLE(MacroNoSpace,i,j,k)
+    int i = 3;
+    int j = 1;
+    int k = 4;
+};
+
+struct MacroSomeSpace
+{
+    DEFINE_SERIALIZABLE(MacroSomeSpace, i, j, k)
+    int i = 3;
+    int j = 1;
+    int k = 4;
+};
+
+struct MacroCrazySpace
+{
+    DEFINE_SERIALIZABLE(
+        MacroCrazySpace  ,
+    i ,
+    		j   ,
+        k
+    )
+    int i = 3;
+    int j = 1;
+    int k = 4;
+};
+
+template <typename Type>
+void TestMacroSpaces(const char * name)
+{
+    std::stringstream stream;
+    Type type;
+    stream << type;
+
+    const char macroExpectationFormat[] =
+        "{ \"%s\": {\"i\" : 3, \"j\" : 1, \"k\" : 4}}\n";
+
+    char expectation[128];
+    snprintf(expectation, sizeof(expectation), macroExpectationFormat, name);
+    ASSERT_EQ(stream.str(), expectation);
+}
+
+TEST(macroSpaces, noSpace)
+{
+    TestMacroSpaces<MacroNoSpace>("MacroNoSpace");
+}
+
+TEST(macroSpaces, someSpace)
+{
+    TestMacroSpaces<MacroSomeSpace>("MacroSomeSpace");
+}
+
+TEST(macroSpaces, crazySpace)
+{
+    TestMacroSpaces<MacroCrazySpace>("MacroCrazySpace");
 }
