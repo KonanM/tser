@@ -3,7 +3,7 @@
 #pragma once
 #include <array>
 #include <cstring>
-#include <iostream>
+#include <ostream>
 #include <string>
 #include <string_view>
 #include <type_traits>
