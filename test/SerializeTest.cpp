@@ -89,7 +89,8 @@ TEST(binaryArchive, readArray)
 TEST(binaryArchive, readRawPtr)
 {
     tser::BinaryArchive binaryArchive;
-    auto someArray = new std::string("Hello World!");
+    std::string testStr("Hello World!");
+    auto * someArray = &testStr;
     binaryArchive << someArray;
     ASSERT_TRUE(*std::unique_ptr<std::string>(binaryArchive.load<decltype(someArray)>()) == "Hello World!");
 }
