@@ -1,7 +1,7 @@
 # tser - Tiny Serialization for C++
 [![Build status](https://ci.appveyor.com/api/projects/status/ggjg8clbh6ytklvv?svg=true)](https://ci.appveyor.com/project/KinanMahdi/tser)
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/KonanM/tser/blob/master/LICENSE)
-[![Try online](https://img.shields.io/badge/try-online-blue.svg)](https://godbolt.org/z/PTE8dM)
+[![Try online](https://img.shields.io/badge/try-online-blue.svg)](https://godbolt.org/z/4jGoeP)
 [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/konanM/tser.svg)](http://isitmaintained.com/project/konanM/tser "Average time to resolve an issue")
 [![Percentage of issues still open](http://isitmaintained.com/badge/open/konanM/tser.svg)](http://isitmaintained.com/project/konanM/tser "Percentage of issues still open")
 ## Why another C++ serialization library?
@@ -34,10 +34,11 @@ If you need a battle tested, non-intrusive and feature rich serialization libary
 * Supports printing of the serialized representation via **base64 encoding**
 * Supports **automatic compression** of integers via variable int encoding (see also [protobuf encoding](https://developers.google.com/protocol-buffers/docs/encoding))
 
-## Basic Example [![Try online](https://img.shields.io/badge/try-online-blue.svg)](https://godbolt.org/z/PTE8dM)
+## Basic Example [![Try online](https://img.shields.io/badge/try-online-blue.svg)](https://godbolt.org/z/4jGoeP)
 
 ```cpp
 #include <cassert>
+#include <iostream>
 #include <optional>
 #include <tser/tser.hpp>
 
@@ -282,7 +283,7 @@ target_link_libraries(mylib PRIVATE tser)
 * Needs a recent compiler (constexpr std::string_view)
 
 ## Compiler support
-See also https://godbolt.org/z/ksVSDY
+See also https://godbolt.org/z/8f6z3T
 * MSVC >= 19.22
 * Clang >= 9.0
 * Gcc >= 7.3
