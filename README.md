@@ -12,14 +12,14 @@ I wanted a library that was small, but allowed me to avoid as much boilerplate a
 
 **tldr:** be quicker to serialize your object, print it to the console, compare it and load it from a string than to figure out how other serialization libraries work. 
 
-If you need a battle tested, non-intrusive and feature rich serialization libary, please have a look at [Boost](https://www.boost.org/doc/libs/1_72_0/libs/serialization/doc/index.html), [Cereal](https://uscilab.github.io/cereal/), [Bitsery](https://github.com/fraillt/bitsery), [Protobuf](https://developers.google.com/protocol-buffers), [Flatbuffers](https://google.github.io/flatbuffers/), [Yas](https://github.com/niXman/yas). They all provide a better feature set and better flexibility. Tser is meant to be tiny - copy one small header put a macro into a few places and be good to go. 
+If you need a battle tested, non-intrusive and feature rich serialization libary, please have a look at [Boost](https://www.boost.org/doc/libs/1_72_0/libs/serialization/doc/index.html), [Cereal](https://uscilab.github.io/cereal/), [Bitsery](https://github.com/fraillt/bitsery), [Protobuf](https://developers.google.com/protocol-buffers), [Flatbuffers](https://google.github.io/flatbuffers/), [Yas](https://github.com/niXman/yas). If you need fast binary serialization have a look at [Cista](https://cista.rocks). They all provide a better feature set and better flexibility. Tser is meant to be tiny - copy one small header put a macro into a few places and be good to go. 
 
 ## Design goals
 * serialization of nearly **all of the STL containers and types**, as well as custom containers that follow STL conventions
 * implement pretty printing to the console **automatically**, but allow for user defined implementations
 * implement comparision operators (equal, non-equal, smaller) **automatically**, but allow for user defined implementations
 * support printing the serialized representation of an object to the console via base64 encoding (this way only printable characters are used, allows for easily loading objects into the debugger via strings)
-* use minimal set of includes (```array, string, string_view, tuple, type_traits, iostream```) and only ~ 320 lines of code
+* use minimal set of includes (```array, string, string_view, tuple, type_traits, ostream```) and only ~ 320 lines of code
 
 ## Features
 
@@ -185,10 +185,10 @@ struct CustomPointNoMacro {
 };
 //alternatively you can also use a non intrusive version
 namespace tser {
-    void operator<<(const CustomPointNoMacro& t, tser::BinaryArchive& ba) {
+    static void operator<<(const CustomPointNoMacro& t, tser::BinaryArchive& ba) {
         ba.save(t.x + t.y);
     }
-    void operator>>(CustomPointNoMacro& t, tser::BinaryArchive& ba) {
+    static void operator>>(CustomPointNoMacro& t, tser::BinaryArchive& ba) {
         t.x = ba.load<int>();
     }
 }
@@ -263,15 +263,15 @@ If you really just want to use tser for single file rapid prototyping it's also 
 
 ```#include <tser/tser.hpp>```
 
-If you are using CMake >= 3.11 you can also use FetchContent to download and use tser directly (tests and samples are not build by default).
+If you are using CMake >= 3.11 you can also use FetchContent to download and use tser directly. 
 ```c++
 FetchContent_Declare(
   tser
   GIT_REPOSITORY https://github.com/KonanM/tser.git
-  GIT_TAG        v1.0
+  GIT_TAG        v1.1
 )
 FetchContent_MakeAvailable(tser)
-target_link_libraries(mylib PRIVATE tser)
+target_link_libraries(mylib PRIVATE KonanM::tser)
 ```
 
 ## Limitations
@@ -280,7 +280,7 @@ target_link_libraries(mylib PRIVATE tser)
 * No safety checks, no versioning, types need the same binary layout on different platforms
 * No support for ```std::variant``` (unless trivially copyable)
 * No support for ```std::stack, std::priority_queue, std::string_view```
-* Needs a recent compiler (constexpr std::string_view)
+* Needs a recent compiler
 
 ## Compiler support
 See also https://godbolt.org/z/8f6z3T
