@@ -75,7 +75,7 @@ You can construct BinaryArchive from a base64 encoded string (which will be deco
 So it's basically one or two lines of code to load a complex object into a test and start using it.
 
 
-Feel free to grab the [base_encoding.hpp](https://github.com/KonanM/tser/blob/master/include/tser/base64_encoding.hpp) header to use it as standalone header in your projects.
+Feel free to grab the [base64_encoding.hpp](https://github.com/KonanM/tser/blob/master/include/tser/base64_encoding.hpp) header to use it as standalone header in your projects.
 
 ```cpp
 void test()
@@ -144,7 +144,7 @@ The output will be in json format (which can be [prettyfied](https://jsonformatt
 
 ## Variable int encoding example
 
-Integers are compressed via variable int encoding. The basic idea is to indicate (in the highest bit of a byte) if there are following bytes. The first seven bytes are then used to store the lowest bits of the number.
+Integers are compressed via variable int encoding. The basic idea is to indicate (in the highest bit of a byte) if there are following bytes. The first seven bits of a byte are then used to store the lowest bits of the integer.
 This way unsigned numbers from 0-127 only take 1 byte to store. Signed integers use zig-zag encoding so the range [-64,63] is encoded in one byte. See [protobuf encoding](https://developers.google.com/protocol-buffers/docs/encoding) for a more detailed explanation.
 
 
@@ -201,6 +201,26 @@ int main
     assert(loadedPoint.x == 11);//x was assigned 5+6 in the save method
     assert(loadedPoint.y == 2); //y was default intialized to 2
 }
+```
+
+## Loading/saving binary contents from/to a file without base64 encoding
+Tser is designed around the main use case of working directly with base64 encoded (human readable and console prinatable) characters. If you want to store the contents in a non base64 encoded binary format to save some space this is also possible, but not as convenient.
+```cpp
+// save binary to disk
+tser::BinaryArchive archive;
+archive.save(Robot{ Point{3,4}, Item::RADAR });
+std::string_view archive_view = archive.get_buffer(); // <-- *NOT* base64 encoded
+std::ofstream("example.txt", std::ios::binary).write(archive_view.data(), archive_view.size());
+```
+
+```cpp
+// load (*NOT* base64 encoded) binary from disk
+std::string s;
+std::ofstream("example.txt", std::ios::binary) >> s;
+tser::BinaryArchive archive(0); //here we can't use the constructor that takes a string, since that expects base64 encoded data
+archive.initialize(s); //we have to use the initialize method to feed the binary data into the BinaryArchive
+
+auto robot = archive.load<Robot>();
 ```
 
 ## Custom comparision functions example
