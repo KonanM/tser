@@ -89,6 +89,14 @@ TEST(binaryArchive, readPair)
     ASSERT_EQ(binaryArchive.load<decltype(somePair)>(), somePair);
 }
 
+TEST(testBase64Encoding, basis)
+{
+    auto encoded = "AAAAAPOAAKhGAAD0gADOjAD0gACuhgEA";
+    auto decoded = tser::decode_base64(encoded);
+    auto encodedAgain = tser::encode_base64(decoded);
+    ASSERT_EQ(encodedAgain,  encoded);
+}
+
 TEST(binaryArchive, readTuple)
 {
     tser::BinaryArchive binaryArchive;

@@ -84,11 +84,9 @@ namespace tser{
         else if constexpr (is_tuple_v<V> && !is_detected_v<has_outstream_op_t, V>) {
             std::apply([&](auto& ... t) { int i = 0; os << "{"; (((i++ != 0 ? os << ", " : os), tser::print(os, t)), ...); os << "}"; }, val);
         }
-        else if constexpr (is_detected_v<has_optional_t, V> && !is_detected_v<has_element_t, V>) {
+        else if constexpr (is_pointer_like_v<V>) {
             os << (val ? (os << (tser::print(os, *val)), "") : "null");
         }
-        else if constexpr (is_detected_v<has_element_t, V>)
-            os << val.get();
         else
             os << val;
         return "";

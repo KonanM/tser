@@ -43,16 +43,16 @@ namespace tser {
 namespace tser {
     //tables for the base64 conversions
     static constexpr auto g_encodingTable = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    static constexpr auto g_decodingTable = []() { std::array<char, 256> decTable{}; for (char i = 0; i < 64; ++i) decTable[static_cast<unsigned>(g_encodingTable[static_cast<size_t>(i)])] = i; return decTable; }();
+    static constexpr auto g_decodingTable = []() { std::array<unsigned char, 256> decTable{}; for (unsigned char i = 0; i < 64u; ++i) decTable[g_encodingTable[i]] = i; return decTable; }();
     static std::string encode_base64(std::string_view in) {
         std::string out;
         unsigned val = 0;
         int valb = -6;
-        for (char c : in) {
-            val = (val << 8) + static_cast<unsigned>(c);
+        for (unsigned char c : in) {
+            val = (val << 8) + c;
             valb += 8;
             while (valb >= 0) {
-                out.push_back(g_encodingTable[(val >> valb) & 0x3F]);
+                out.push_back(g_encodingTable[(val >> valb) & 63u]);
                 valb -= 6;
             }
         }
@@ -63,8 +63,8 @@ namespace tser {
         std::string out;
         unsigned val = 0;
         int valb = -8;
-        for (char c : in) {
-            val = (val << 6) + static_cast<unsigned>(g_decodingTable[static_cast<unsigned char>(c)]);
+        for (unsigned char c : in) {
+            val = (val << 6) + g_decodingTable[c];
             valb += 6;
             if (valb >= 0) {
                 out.push_back(char((val >> valb) & 0xFF));
@@ -149,11 +149,9 @@ namespace tser{
         else if constexpr (is_tuple_v<V> && !is_detected_v<has_outstream_op_t, V>) {
             std::apply([&](auto& ... t) { int i = 0; os << "{"; (((i++ != 0 ? os << ", " : os), tser::print(os, t)), ...); os << "}"; }, val);
         }
-        else if constexpr (is_detected_v<has_optional_t, V> && !is_detected_v<has_element_t, V>) {
+        else if constexpr (is_pointer_like_v<V>) {
             os << (val ? (os << (tser::print(os, *val)), "") : "null");
         }
-        else if constexpr (is_detected_v<has_element_t, V>)
-            os << val.get();
         else
             os << val;
         return "";
