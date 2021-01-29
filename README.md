@@ -83,7 +83,7 @@ void test()
     tser::BinaryArchive ba2("BggBUg");
     auto loadedRobot = ba2.load<Robot>();
 
-    auto robot = Robot{ x::Point{3,4}, Item::RADAR };
+    auto robot = Robot{ Point{3,4}, Item::RADAR };
     //all the comparision operators are implemented, so I could directly use std::set<Robot>
     bool areEqual = (robot == loadedRobot) && !(robot != loadedRobot) && !(robot < loadedRobot);
     (void)areEqual;
