@@ -89,12 +89,22 @@ TEST(binaryArchive, readPair)
     ASSERT_EQ(binaryArchive.load<decltype(somePair)>(), somePair);
 }
 
-TEST(testBase64Encoding, basis)
+TEST(testBase64Encoding, encodingToDecoding)
 {
-    auto encoded = "AAAAAPOAAKhGAAD0gADOjAD0gACuhgEA";
+    auto encoded = tser::g_encodingTable;
     auto decoded = tser::decode_base64(encoded);
     auto encodedAgain = tser::encode_base64(decoded);
-    ASSERT_EQ(encodedAgain,  encoded);
+    ASSERT_EQ(encodedAgain, encoded);
+}
+
+TEST(testBase64Encoding, decodingToEncoding)
+{
+    std::string decoded(256,'\0');
+    for (unsigned i = 0; i < 255u; ++i)
+        decoded[i] = static_cast<char>(i);
+    auto encoded = tser::encode_base64(decoded);
+    auto decodedAgain = tser::decode_base64(encoded);
+    ASSERT_EQ(decodedAgain, decoded);
 }
 
 TEST(binaryArchive, readTuple)
