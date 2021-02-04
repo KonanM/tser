@@ -35,12 +35,11 @@ void test()
 {
     //if we construct BinaryArchive with a string it will decode it and initialized it's internal buffer with it
     //so it's basically one or two lines of code to load a complex object into a test and start using it
-    tser::BinaryArchive ba2("BggBUg");
-    auto loadedRobot = ba2.load<Robot>();
+    auto loadedRobot = tser::load<Robot>("BggBUg");
 
     auto robot = Robot{ x::Point{3,4}, Item::RADAR };
     //all the comparision operators are implemented, so I could directly use std::set<Robot>
     bool areEqual = (robot == loadedRobot) && !(robot != loadedRobot) && !(robot < loadedRobot);
     (void)areEqual;
-    std::cout << loadedRobot; //prints{ "Robot": {"point" : { "Point": {"x" : 3, "y" : 4}}, "item" : R} }
+    std::cout << loadedRobot; //prints { "Robot": {"point" : { "Point": {"x" : 3, "y" : 4}}, "item" : "R"} }
 }

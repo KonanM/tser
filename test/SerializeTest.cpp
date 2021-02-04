@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSL-1.0
 #include "gtest/gtest.h"
 #include "tser/tser.hpp"
+#include "print_diff.hpp"
 
 #include <numeric>
 #include <optional>
@@ -228,7 +229,7 @@ TEST(binaryArchive, readPoints)
 struct Object : public Point
 {
     int idx = 0;
-    DEFINE_SERIALIZABLE(Object, tser::to_base<Point>(this), idx)
+    DEFINE_SERIALIZABLE(Object, tser::base<Point>(this), idx)
 };
 
 TEST(binaryArchive, deriveFromPointTest)
@@ -402,4 +403,21 @@ TEST(macroSpaces, someSpace)
 TEST(macroSpaces, crazySpace)
 {
     TestMacroSpaces<MacroCrazySpace>("MacroCrazySpace");
+}
+
+
+struct CompareThem
+{
+    DEFINE_SERIALIZABLE(CompareThem, ints, x, y)
+    std::array<int, 5> ints{ -1,0,1,2,3 };
+    int x = 0, y = 0;
+};
+
+TEST(print_diff, basic_test)
+{
+    CompareThem a, b;
+    a.ints[3] = 7;
+    b.y = 3;
+    tser::print_diff(a,b, std::cout);
+
 }

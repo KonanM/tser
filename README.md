@@ -79,14 +79,15 @@ Feel free to grab the [base64_encoding.hpp](https://github.com/KonanM/tser/blob/
 ```cpp
 void test()
 {
-    tser::BinaryArchive ba2("BggBUg");
-    auto loadedRobot = ba2.load<Robot>();
+    //if we construct BinaryArchive with a string it will decode it and initialized it's internal buffer with it
+    //alternatively you can use tser::load to directly load an object
+    auto loadedRobot = tser::load<Robot>("BggBUg");
 
     auto robot = Robot{ Point{3,4}, Item::RADAR };
     //all the comparision operators are implemented, so I could directly use std::set<Robot>
     bool areEqual = (robot == loadedRobot) && !(robot != loadedRobot) && !(robot < loadedRobot);
     (void)areEqual;
-    std::cout << loadedRobot; //prints{ "Robot": {"point" : { "Point": {"x" : 3, "y" : 4}}, "item" : R} }
+    std::cout << loadedRobot; //prints { "Robot": {"point" : { "Point": {"x" : 3, "y" : 4}}, "item" : "R"} }
 }
 ```
 
@@ -272,6 +273,12 @@ int main()
 }
 ```
 
+## Can I print differences between classes of the same type?
+For now it is a feature that I'm not sure if I should make it part of the main library. You can find it here [print_diff.hpp](https://github.com/KonanM/tser/tree/master/test/print_diff.hpp).
+It ```tser::print_diff(o1,o2);``` only prints the differing parts of the objects, it would be good if I could get some feedback if this should be improved. 
+
+
+
 ## How does it work?
 
 Internally the macro exposes a tuple of the members and the name of the members. It would also be possible to implement this manually for every type.
@@ -300,7 +307,7 @@ If you are using CMake >= 3.11 you can also use FetchContent to download and use
 FetchContent_Declare(
   tser
   GIT_REPOSITORY https://github.com/KonanM/tser.git
-  GIT_TAG        v1.1
+  GIT_TAG        v1.2
 )
 FetchContent_MakeAvailable(tser)
 target_link_libraries(mylib PRIVATE KonanM::tser)

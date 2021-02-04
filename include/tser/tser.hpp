@@ -123,7 +123,7 @@ namespace tser{
     public:
         explicit BinaryArchive(const size_t initialSize = 1024) : m_bytes(initialSize, '\0') {}
         explicit BinaryArchive(std::string encodedStr) : m_bytes(decode_base64(encodedStr)), m_bufferSize(m_bytes.size()){}
-        template<typename T>
+        template<typename T, std::enable_if_t<!std::is_integral_v<T>, int> = 0>
         explicit BinaryArchive(const T& t) { save(t); }
         template<typename T>
         void save(const T& t){
@@ -231,7 +231,9 @@ namespace tser{
         }
     };
     template<class Base, typename Derived>
-    std::conditional_t<std::is_const_v<Derived>, const Base, Base>& to_base(Derived* thisPtr) { return *thisPtr; }
+    std::conditional_t<std::is_const_v<Derived>, const Base, Base>& base(Derived* thisPtr) { return *thisPtr; }
+    template<typename T>
+    auto load(std::string_view encoded) { BinaryArchive ba(encoded); return ba.load<T>(); }
 }
 //this macro defines printing, serialisation and comparision operators (==,!=,<) for custom types
 #define DEFINE_SERIALIZABLE(Type, ...) \
