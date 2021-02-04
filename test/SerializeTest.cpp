@@ -225,6 +225,22 @@ TEST(binaryArchive, readPoints)
 }
 
 
+struct Object : public Point
+{
+    int idx = 0;
+    DEFINE_SERIALIZABLE(Object, tser::to_base<Point>(this), idx)
+};
+
+TEST(binaryArchive, deriveFromPointTest)
+{
+    tser::BinaryArchive binaryArchive;
+    binaryArchive << Object{ { 1, 2 }, 3 };
+    binaryArchive << Object{ { 5, 6 }, 4 };
+    ASSERT_TRUE((binaryArchive.load<Object>() == Object{ { 1, 2 }, 3 }));
+    ASSERT_TRUE((binaryArchive.load<Object>() == Object{ { 5, 6 }, 4 }));
+}
+
+
 //if we don't want pointer types to break our comparision operator we have to define them here
 DEFINE_HASHABLE(Point)
 

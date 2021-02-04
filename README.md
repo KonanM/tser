@@ -60,9 +60,8 @@ int main()
     auto robot = Robot{ Point{3,4}, Item::RADAR };
     std::cout << robot << '\n'; // prints { "Robot": {"point" : { "Point": {"x" : 3, "y" : 4}}, "item" : "R"}}
     std::cout << Robot() << '\n'; // prints { "Robot": {"point" : { "Point": {"x" : 0, "y" : 0}}, "item" : {null}}}
-    tser::BinaryArchive ba;
-    ba.save(robot);
-    std::cout << ba; //prints BggBUg to the console via base64 encoding (base64 means only printable characters are used)
+
+    std::cout << tser::BinaryArchive(robot); //prints BggBUg to the console via base64 encoding (base64 means only printable characters are used)
     //this way it's quickly possible to log entire objects to the console or logfiles
 
     //due to varint encoding only 6 printable characters are needed, although the struct is 12 bytes in size
@@ -89,6 +88,19 @@ void test()
     (void)areEqual;
     std::cout << loadedRobot; //prints{ "Robot": {"point" : { "Point": {"x" : 3, "y" : 4}}, "item" : R} }
 }
+```
+
+##How can I serialize something that has a base class?
+There is a small utility function for this use case called ```tser::to_base<Base>(this)```.  It's a const correct version of ```((Base&)*this)``` (which you could also use, but it will probably produce a warning).
+```cpp
+struct Object : public Point
+{
+    int idx = 0;
+    DEFINE_SERIALIZABLE(Object, tser::to_base<Point>(this), idx)
+};
+
+tser::BinaryArchive binaryArchive;
+binaryArchive << Object{ { 1, 2 }, 3 };
 ```
 
 ## Pretty printing example [![Try online](https://img.shields.io/badge/try-online-blue.svg)](https://godbolt.org/z/r1414M)

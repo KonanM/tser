@@ -24,9 +24,7 @@ int main()
     auto robot = Robot{ x::Point{3,4}, Item::RADAR };
     std::cout << robot << '\n'; // prints { "Robot": {"point" : { "Point": {"x" : 3, "y" : 4}}, "item" : R}}
     std::cout << Robot() << '\n'; // prints { "Robot": {"point" : { "Point": {"x" : 3, "y" : 4}}, "item" : {null}}}
-    tser::BinaryArchive ba;
-    ba.save(robot);
-    std::cout << ba; //prints BggBUg to the console via base64 encoding (base64 means only printable characters are used)
+    std::cout << tser::BinaryArchive(robot); //prints BggBUg to the console via base64 encoding (base64 means only printable characters are used)
     //this way it's quickly possible to log entire objects to the console or logfiles
 
     //due to varint encoding only 6 printable characters are needed, although the struct is 12 bytes in size

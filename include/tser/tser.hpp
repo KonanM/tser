@@ -123,7 +123,8 @@ namespace tser{
     public:
         explicit BinaryArchive(const size_t initialSize = 1024) : m_bytes(initialSize, '\0') {}
         explicit BinaryArchive(std::string encodedStr) : m_bytes(decode_base64(encodedStr)), m_bufferSize(m_bytes.size()){}
-
+        template<typename T>
+        explicit BinaryArchive(const T& t) { save(t); }
         template<typename T>
         void save(const T& t){
             if constexpr (is_detected_v<has_free_save_t, T>)
@@ -229,21 +230,22 @@ namespace tser{
             return os << encode_base64(ba.get_buffer()) << '\n';
         }
     };
-
+    template<class Base, typename Derived>
+    std::conditional_t<std::is_const_v<Derived>, const Base, Base>& to_base(Derived* thisPtr) { return *thisPtr; }
 }
 //this macro defines printing, serialisation and comparision operators (==,!=,<) for custom types
 #define DEFINE_SERIALIZABLE(Type, ...) \
 inline decltype(auto) members() const { return std::tie(__VA_ARGS__); } \
 inline decltype(auto) members() { return std::tie(__VA_ARGS__); }  \
 static constexpr std::array<char, tser::detail::str_size(#__VA_ARGS__)> _memberNameData = [](){ \
-std::array<char, tser::detail::str_size(#__VA_ARGS__)> chars{'\0'}; size_t idx = 0; constexpr auto* ini(#__VA_ARGS__);  \
-for (char const* c = ini; *c; ++c, ++idx) if(*c != ',' && *c != ' ') chars[idx] = *c;  return chars;}(); \
+std::array<char, tser::detail::str_size(#__VA_ARGS__)> chars{'\0'}; size_t _idx = 0; constexpr auto* ini(#__VA_ARGS__);  \
+for (char const* _c = ini; *_c; ++_c, ++_idx) if(*_c != ',' && *_c != ' ') chars[_idx] = *_c;  return chars;}(); \
 static constexpr const char* _typeName = #Type; \
 static constexpr std::array<const char*, tser::detail::n_args(#__VA_ARGS__)> _memberNames = \
 [](){ std::array<const char*, tser::detail::n_args(#__VA_ARGS__)> out{ }; \
-for(size_t i = 0, nArgs = 0; nArgs < tser::detail::n_args(#__VA_ARGS__) ; ++i) { \
-while(Type::_memberNameData[i] == '\0') i++; out[nArgs++] = &Type::_memberNameData[i]; \
-while(Type::_memberNameData[++i] != '\0'); } return out;}();\
+for(size_t _i = 0, nArgs = 0; nArgs < tser::detail::n_args(#__VA_ARGS__) ; ++_i) { \
+while(Type::_memberNameData[_i] == '\0') _i++; out[nArgs++] = &Type::_memberNameData[_i]; \
+while(Type::_memberNameData[++_i] != '\0'); } return out;}();\
 template<typename OT, std::enable_if_t<std::is_same_v<OT,Type> && !tser::is_detected_v<tser::has_equal_t, OT>, int> = 0>\
 friend bool operator==(const Type& lhs, const OT& rhs) { return lhs.members() == rhs.members(); }\
 template<typename OT, std::enable_if_t<std::is_same_v<OT,Type> && !tser::is_detected_v<tser::has_nequal_t, OT>, int> = 0>\
