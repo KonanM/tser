@@ -21,7 +21,7 @@ If you need a battle tested, non-intrusive and feature rich serialization libary
 * implement pretty printing to the console **automatically**, but allow for user defined implementations
 * implement comparision operators (equal, non-equal, smaller) **automatically**, but allow for user defined implementations
 * support printing the serialized representation of an object to the console via base64 encoding (this way only printable characters are used, allows for easily loading objects into the debugger via strings)
-* use minimal set of includes (```array, string, string_view, tuple, type_traits, ostream```) and only ~ 320 lines of code
+* use minimal set of includes (```array, cstring, string, string_view, tuple, type_traits, ostream```) and only ~ 320 lines of code
 
 ## Features
 
