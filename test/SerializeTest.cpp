@@ -213,13 +213,15 @@ TEST(binaryArchive, customSerializationFreeFunction)
 struct Point
 {
     DEFINE_SERIALIZABLE(Point, x, y)
-    short x = 0, y = 0;
+    int x = 0, y = 0;
 };
 
 TEST(binaryArchive, readPoints)
 {
     tser::BinaryArchive binaryArchive;
     binaryArchive << Point{ 1,2 };
+    std::cout << tser::BinaryArchive(Point{ 1,2 });
+    std::cout << Point{ 1,2 };
     binaryArchive << Point{ 5,6 };
     ASSERT_TRUE((binaryArchive.load<Point>() == Point{ 1,2 }));
     ASSERT_TRUE((binaryArchive.load<Point>() == Point{ 5,6 }));

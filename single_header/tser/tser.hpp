@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSL-1.0
 #pragma once
 #include <array>
-#include <cstring>
 #include <ostream>
 #include <string>
 #include <string_view>

@@ -1,3 +1,5 @@
+<img src="tser.png" height="300" align="center"/>
+
 # tser - Tiny Serialization for C++
 [![Build status](https://ci.appveyor.com/api/projects/status/ggjg8clbh6ytklvv?svg=true)](https://ci.appveyor.com/project/KinanMahdi/tser)
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/KonanM/tser/blob/master/LICENSE)
@@ -91,19 +93,24 @@ void test()
 }
 ```
 
-##How can I serialize something that has a base class?
-There is a small utility function for this use case called ```tser::to_base<Base>(this)```.  It's a const correct version of ```((Base&)*this)``` (which you could also use, but it will probably produce a warning).
+## How can I serialize something that has a base class?
+There is a small utility function for this use case called ```tser::base<Base>(this)```.  It's a const correct version of ```((Base&)*this)``` (which you could also use, but it will probably produce a warning).
+This only works if the base class also uses the tser macro.
 ```cpp
 struct Object : public Point
 {
     int idx = 0;
-    DEFINE_SERIALIZABLE(Object, tser::to_base<Point>(this), idx)
+    DEFINE_SERIALIZABLE(Object, tser::base<Point>(this), idx)
 };
-
-tser::BinaryArchive binaryArchive;
-binaryArchive << Object{ { 1, 2 }, 3 };
 ```
-
+If you have a base class which is not related to tser (or don't need to serialize the whole base class), you can alternatively just list the members of the base class directly.
+```cpp
+struct Object : public Point
+{
+    int idx = 0;
+    DEFINE_SERIALIZABLE(Object, x, y, idx)
+};
+```
 ## Pretty printing example [![Try online](https://img.shields.io/badge/try-online-blue.svg)](https://godbolt.org/z/r1414M)
 Datastructures taken from [Cpp Serializer Benchmark](https://github.com/fraillt/cpp_serializers_benchmark/blob/master/testing_core/types.cpp)
 
@@ -217,7 +224,7 @@ int main
 ```
 
 ## Loading/saving binary contents from/to a file without base64 encoding
-Tser is designed around the main use case of working directly with base64 encoded (human readable and console prinatable) characters. If you want to store the contents in a non base64 encoded binary format to save some space this is also possible, but not as convenient.
+Tser is designed around the main use case of working directly with base64 encoded (human readable and console prinatable) characters. If you want to store the contents in a non base64 encoded binary format (to save some space), this is also possible, but not as convenient.
 ```cpp
 // save binary to disk
 tser::BinaryArchive archive;
@@ -293,7 +300,7 @@ struct Point {
     static constexpr std::array<std::string_view, 2> _memberNames{"x", "y"};
 };
 ```
-By providing a function ```members()``` to iterate over the types we can now use SFINAE along with the detection idiom to detect how a type should be serialized.
+By providing a function ```members()``` to iterate over the members we can now use if constexpr in combination with the detection idiom to detect how each member should be serialized.
 The printing of types is realized with the static ```_memberNames``` field.
 
 ## Integration
