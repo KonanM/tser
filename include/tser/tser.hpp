@@ -69,8 +69,9 @@ namespace tser{
             os << "\"" << val << "\"";
         else if constexpr (is_container_v<V>) {
             size_t i = 0;
+            os << "\n[";
             for (auto& elem : val)
-                os << (i++ == 0 ? "\n[" : ",") << tser::print(os, elem);
+                os << (i++ == 0 ? "" : ",") << tser::print(os, elem);
             os << "]\n";
         }
         else if constexpr (is_tser_t_v<V> && !is_detected_v<has_outstream_op_t, V>) {
